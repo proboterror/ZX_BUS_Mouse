@@ -1,0 +1,91 @@
+# -------------------------------------------------------------------------- #
+#
+# Copyright (C) 1991-2010 Altera Corporation
+# Your use of Altera Corporation's design tools, logic functions 
+# and other software and tools, and its AMPP partner logic 
+# functions, and any output files from any of the foregoing 
+# (including device programming or simulation files), and any 
+# associated documentation or information are expressly subject 
+# to the terms and conditions of the Altera Program License 
+# Subscription Agreement, Altera MegaCore Function License 
+# Agreement, or other applicable license agreement, including, 
+# without limitation, that your use is for the sole purpose of 
+# programming logic devices manufactured by Altera and sold by 
+# Altera or its authorized distributors.  Please refer to the 
+# applicable agreement for further details.
+#
+# -------------------------------------------------------------------------- #
+#
+# Quartus II
+# Version 9.1 Build 350 03/24/2010 Service Pack 2 SJ Web Edition
+# Date created = 19:35:27  January 23, 2024
+#
+# -------------------------------------------------------------------------- #
+#
+# Notes:
+#
+# 1) The default values for assignments are stored in the file:
+#		test_assignment_defaults.qdf
+#    If this file doesn't exist, see file:
+#		assignment_defaults.qdf
+#
+# 2) Altera recommends that you do not modify this file. This
+#    file is updated automatically by the Quartus II software
+#    and any changes you make may be lost or overwritten.
+#
+# -------------------------------------------------------------------------- #
+
+
+set_global_assignment -name FAMILY MAX3000A
+set_global_assignment -name DEVICE "EPM3032ALC44-4"
+set_global_assignment -name TOP_LEVEL_ENTITY mouse_controller
+set_global_assignment -name ORIGINAL_QUARTUS_VERSION "9.1 SP2"
+set_global_assignment -name PROJECT_CREATION_TIME_DATE "19:35:27  JANUARY 23, 2024"
+set_global_assignment -name LAST_QUARTUS_VERSION "9.1 SP2"
+set_global_assignment -name USE_GENERATED_PHYSICAL_CONSTRAINTS OFF -section_id eda_blast_fpga
+set_global_assignment -name DEVICE_FILTER_PACKAGE PLCC
+set_global_assignment -name RESERVE_ALL_UNUSED_PINS_NO_OUTPUT_GND "AS INPUT TRI-STATED"
+set_global_assignment -name VHDL_FILE mouse_controller.vhd
+set_global_assignment -name MAX7000_DEVICE_IO_STANDARD "3.3-V LVTTL"
+set_global_assignment -name MAX7000_OPTIMIZATION_TECHNIQUE AREA
+set_global_assignment -name SYNTH_TIMING_DRIVEN_SYNTHESIS OFF
+set_global_assignment -name OPTIMIZE_HOLD_TIMING OFF
+set_global_assignment -name FITTER_EFFORT "STANDARD FIT"
+set_global_assignment -name OPTIMIZE_IOC_REGISTER_PLACEMENT_FOR_TIMING OFF
+set_global_assignment -name AUTO_PARALLEL_EXPANDERS OFF
+set_global_assignment -name RTLV_GROUP_RELATED_NODES_TMV ON
+set_global_assignment -name RTLV_GROUP_COMB_LOGIC_IN_CLOUD_TMV OFF
+set_global_assignment -name USE_CONFIGURATION_DEVICE ON
+set_location_assignment PIN_28 -to A0
+set_location_assignment PIN_27 -to A1
+set_location_assignment PIN_19 -to A5
+set_location_assignment PIN_18 -to A7
+set_location_assignment PIN_14 -to A8
+set_location_assignment PIN_11 -to A10
+set_location_assignment PIN_37 -to D[7]
+set_location_assignment PIN_29 -to D[6]
+set_location_assignment PIN_26 -to D[5]
+set_location_assignment PIN_24 -to D[4]
+set_location_assignment PIN_25 -to D[3]
+set_location_assignment PIN_31 -to D[2]
+set_location_assignment PIN_34 -to D[1]
+set_location_assignment PIN_33 -to D[0]
+set_location_assignment PIN_4 -to DI[7]
+set_location_assignment PIN_44 -to DI[6]
+set_location_assignment PIN_2 -to DI[5]
+set_location_assignment PIN_5 -to DI[4]
+set_location_assignment PIN_6 -to DI[3]
+set_location_assignment PIN_8 -to DI[2]
+set_location_assignment PIN_12 -to DI[1]
+set_location_assignment PIN_9 -to DI[0]
+set_location_assignment PIN_20 -to IORQ
+set_location_assignment PIN_16 -to M1
+set_location_assignment PIN_41 -to MKEY
+set_location_assignment PIN_43 -to MX
+set_location_assignment PIN_40 -to MY
+set_location_assignment PIN_21 -to RD
+set_location_assignment PIN_32 -to TCK
+set_location_assignment PIN_7 -to TDI
+set_location_assignment PIN_38 -to TDO
+set_location_assignment PIN_13 -to TMS
+set_location_assignment PIN_39 -to IORQGE
