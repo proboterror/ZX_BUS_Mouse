@@ -4721,7 +4721,7 @@
   (symbol (lib_id "Device:R") (at 144.78 161.29 90) (unit 1)
     (in_bom yes) (on_board yes) (dnp no)
     (uuid 48667ad8-ae31-421f-a76e-6c1b1ddd24e4)
-    (property "Reference" "R6" (at 144.78 158.75 90)
+    (property "Reference" "R4" (at 144.78 158.75 90)
       (effects (font (size 1.27 1.27)))
     )
     (property "Value" "10K" (at 144.78 163.83 90)
@@ -4738,7 +4738,7 @@
     (instances
       (project "ZX_BUS_Mouse"
         (path "/3450efc4-f02c-4d95-a19b-bf60e75dcf1f"
-          (reference "R6") (unit 1)
+          (reference "R4") (unit 1)
         )
       )
     )
@@ -5245,7 +5245,7 @@
   (symbol (lib_id "Device:R") (at 175.26 118.11 90) (unit 1)
     (in_bom yes) (on_board yes) (dnp no) (fields_autoplaced)
     (uuid 874ed985-90cd-44d5-8933-65f88020cbbc)
-    (property "Reference" "R5" (at 175.26 111.76 90)
+    (property "Reference" "R9" (at 175.26 111.76 90)
       (effects (font (size 1.27 1.27)))
     )
     (property "Value" "2.2K" (at 175.26 114.3 90)
@@ -5262,7 +5262,7 @@
     (instances
       (project "ZX_BUS_Mouse"
         (path "/3450efc4-f02c-4d95-a19b-bf60e75dcf1f"
-          (reference "R5") (unit 1)
+          (reference "R9") (unit 1)
         )
       )
     )
@@ -5448,7 +5448,7 @@
   (symbol (lib_id "Device:R") (at 184.15 120.65 90) (unit 1)
     (in_bom yes) (on_board yes) (dnp no) (fields_autoplaced)
     (uuid adc94137-9333-496b-9dfe-eb8f65f31ec9)
-    (property "Reference" "R4" (at 184.15 114.3 90)
+    (property "Reference" "R8" (at 184.15 114.3 90)
       (effects (font (size 1.27 1.27)))
     )
     (property "Value" "2.2K" (at 184.15 116.84 90)
@@ -5465,7 +5465,7 @@
     (instances
       (project "ZX_BUS_Mouse"
         (path "/3450efc4-f02c-4d95-a19b-bf60e75dcf1f"
-          (reference "R4") (unit 1)
+          (reference "R8") (unit 1)
         )
       )
     )
@@ -5474,7 +5474,7 @@
   (symbol (lib_id "Device:R") (at 152.4 181.61 90) (unit 1)
     (in_bom yes) (on_board yes) (dnp no)
     (uuid ae6031d2-18c7-40df-8024-cc5cfb74bccb)
-    (property "Reference" "R9" (at 152.4 179.07 90)
+    (property "Reference" "R7" (at 152.4 179.07 90)
       (effects (font (size 1.27 1.27)))
     )
     (property "Value" "10K" (at 152.4 184.15 90)
@@ -5491,7 +5491,7 @@
     (instances
       (project "ZX_BUS_Mouse"
         (path "/3450efc4-f02c-4d95-a19b-bf60e75dcf1f"
-          (reference "R9") (unit 1)
+          (reference "R7") (unit 1)
         )
       )
     )
@@ -5526,7 +5526,7 @@
   (symbol (lib_id "Device:R") (at 152.4 167.64 90) (unit 1)
     (in_bom yes) (on_board yes) (dnp no)
     (uuid b6da2950-3ca7-4df6-b6cd-12c7b0136763)
-    (property "Reference" "R7" (at 152.4 165.1 90)
+    (property "Reference" "R5" (at 152.4 165.1 90)
       (effects (font (size 1.27 1.27)))
     )
     (property "Value" "10K" (at 152.4 170.18 90)
@@ -5543,7 +5543,7 @@
     (instances
       (project "ZX_BUS_Mouse"
         (path "/3450efc4-f02c-4d95-a19b-bf60e75dcf1f"
-          (reference "R7") (unit 1)
+          (reference "R5") (unit 1)
         )
       )
     )
@@ -5633,7 +5633,7 @@
   (symbol (lib_id "Device:R") (at 144.78 173.99 90) (unit 1)
     (in_bom yes) (on_board yes) (dnp no)
     (uuid de4f11a9-3e27-4649-994c-0b57fb00d3aa)
-    (property "Reference" "R8" (at 144.78 171.45 90)
+    (property "Reference" "R6" (at 144.78 171.45 90)
       (effects (font (size 1.27 1.27)))
     )
     (property "Value" "10K" (at 144.78 176.53 90)
@@ -5650,7 +5650,7 @@
     (instances
       (project "ZX_BUS_Mouse"
         (path "/3450efc4-f02c-4d95-a19b-bf60e75dcf1f"
-          (reference "R8") (unit 1)
+          (reference "R6") (unit 1)
         )
       )
     )
