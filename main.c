@@ -173,6 +173,14 @@ enum mouse_resolution
 #define PS2_CLK_PORT D
 #define PS2_CLK_PIN 2
 
+#define DI_PORT B
+#define MX_PORT C
+#define MX_PIN 0
+#define MY_PORT C
+#define MY_PIN 1
+#define MKEY_PORT C
+#define MKEY_PIN 2
+
 // DDRx Register: 1 makes the corresponding pin an output, and a 0 makes the corresponding pin an input.
 #define input(PORT_, PIN_) DDR(PORT_) &= ~(1 << PIN_);
 #define output(PORT_, PIN_) DDR(PORT_) |= (1 << PIN_)
@@ -321,7 +329,7 @@ void mouse_write_byte(uint8_t data)
 	golo(MCLK);
 }
 
-uint8_t mouse_read_bit()
+uint8_t mouse_read_bit(void)
 {
 	// The Data line changes state when Clock is high and that data is valid when Clock is low.
 	// Wait CLK down
@@ -335,7 +343,7 @@ uint8_t mouse_read_bit()
 	return bit;
 }
 
-uint8_t mouse_read_byte()
+uint8_t mouse_read_byte(void)
 {
 	uint8_t data = 0;
 	uint8_t parity = 1;
@@ -388,7 +396,7 @@ void mouse_write_byte_read_ack(const uint8_t data)
 	}
 }
 
-void mouse_init()
+void mouse_init(void)
 {
 	gohi(MCLK); //?
 	gohi(MDATA); //?
@@ -443,6 +451,16 @@ int main(void)
 #endif
 	mouse_init();
 
+	DDR(DI_PORT) = 0xFF;
+	output(MX_PORT, MX_PIN);
+	output(MY_PORT, MY_PIN);
+	output(MKEY_PORT, MKEY_PIN);
+
+	PORT(DI_PORT) = 0x00;
+	low(MX_PORT, MX_PIN);
+	low(MY_PORT, MY_PIN);
+	low(MKEY_PORT, MKEY_PIN);
+
 #if ENABLE_WHEEL
 		lcd_gotoxy(0, 3);
 
@@ -466,9 +484,31 @@ int main(void)
 #if ENABLE_WHEEL
 		if (mouse_wheel_enabled)
 		{
-			mouse_z += (int8_t)mouse_read_byte();
+			mouse_z = (int8_t)mouse_read_byte();
 		}
 #endif
+		PORT(DI_PORT) = mouse_x;
+		_delay_us(1);
+		high(MX_PORT, MX_PIN);
+		_delay_us(10);
+		low(MX_PORT, MX_PIN);
+
+		PORT(DI_PORT) = mouse_y;
+		_delay_us(1);
+		high(MY_PORT, MY_PIN);
+		_delay_us(10);
+		low(MY_PORT, MY_PIN);
+
+#if ENABLE_WHEEL
+		PORT(DI_PORT) = (mouse_buttons & 0b00000111) | (mouse_z << 4);
+#else
+		PORT(DI_PORT) = (mouse_buttons & 0b00000111);
+#endif
+		_delay_us(1);
+		high(MKEY_PORT, MKEY_PIN);
+		_delay_us(10);
+		low(MKEY_PORT, MKEY_PIN);
+
 #if DEBUG
 		char buf[5];
 		lcd_gotoxy(0, 0);
