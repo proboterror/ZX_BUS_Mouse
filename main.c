@@ -358,11 +358,6 @@ uint8_t mouse_read_byte(void)
 	if(start_bit == 1)
 		ps2_state = PS2_STATE_ERROR;
 
-	// Skip start bit
-//	while (CLK_READ == 1) {}
-//	_delay_us(5); /* not sure why */
-//	while (CLK_READ == 0) {}
-
 	for (uint8_t i = 0; i < 8; i++)
 	{
 		data >>= 1;
