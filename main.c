@@ -162,11 +162,6 @@ enum mouse_resolution
 	RESOLUTION_8_COUNTS_PER_MM = 3
 };
 
-#define GLUE(a, b) a##b
-#define DDR(p) GLUE(DDR, p)
-#define PORT(p) GLUE(PORT, p)
-#define PIN(p) GLUE(PIN, p)
-
 #define DEFAULT_MOUSE_DEVICE_ID 0
 #define INTELLIMOUSE_DEVICE_ID 3
 
@@ -185,6 +180,11 @@ enum mouse_resolution
 #define MY_PIN 1
 #define MKEY_PORT C
 #define MKEY_PIN 2
+
+#define GLUE(a, b) a##b
+#define DDR(p) GLUE(DDR, p)
+#define PORT(p) GLUE(PORT, p)
+#define PIN(p) GLUE(PIN, p)
 
 // DDRx Register: 1 makes the corresponding pin an output, and a 0 makes the corresponding pin an input.
 #define input(PORT_, PIN_) DDR(PORT_) &= ~(1 << PIN_);
