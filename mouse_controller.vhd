@@ -6,8 +6,8 @@ use IEEE.std_logic_1164.all;
 
 -- Register with 3 state output.
 -- Input data stored on C clock rising edge.
--- If OE then stored data set to output Q (async?) else Q set to Z state.
--- Do not pass through input data to output / do not set output on C clock (?).
+-- If OE then stored data set to output Q else Q set to Z state.
+-- Do not pass through input data to output / do not set output on C clock.
 entity register_generic_3_state is
 generic(data_width : integer := 8);
 port(
@@ -21,7 +21,7 @@ end register_generic_3_state;
 architecture structure of register_generic_3_state is
 begin
 	process(C, OE)
-	variable DATA: bit_vector(data_width - 1 downto 0); -- := (others => '0'); -- does it need to be initialized? 1?
+	variable DATA: bit_vector(data_width - 1 downto 0);
 	begin
 		if (OE = '0') then
 			Q <= (others => 'Z');
@@ -56,9 +56,9 @@ port(
 		A10: in bit;
 		IORQGE: out std_logic := 'Z'; -- 1 when address lower bits and M1 == 1 (address partial match), Z state otherwise.
 
-		MX: in bit; -- init?
-		MY: in bit; -- init?
-		MKEY: in bit; -- init?
+		MX: in bit;
+		MY: in bit;
+		MKEY: in bit;
 		DI: in bit_vector(7 downto 0);
 
 		D: out std_logic_vector(7 downto 0) := (others => 'Z')
@@ -97,8 +97,9 @@ begin
 	port map(DI, D, C => to_stdulogic(MY), OE => MY_SEL);
 
 	-- 8 bit register required for mouse wheel support (currently requires 35 macrocells and thus EPM3064ALC44).
-	-- ToDo: check port #FADF 3-7 bits state.
 	register_key: register_generic_3_state
+	-- Enable mouse wheel:
+	-- port map(DI, D, C => to_stdulogic(MKEY), OE => MKEY_SEL);
 	generic map(data_width => 3)
 	port map(DI(2 downto 0), D, C => to_stdulogic(MKEY), OE => MKEY_SEL);
 	-- Note:
