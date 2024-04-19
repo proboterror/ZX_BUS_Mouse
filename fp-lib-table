@@ -1,4 +1,4 @@
 (fp_lib_table
-  (lib (name "Connector_Mini-DIN_Female_6Pin")(type "KiCad")(uri "${KIPRJMOD}/Connector_Mini-DIN_Female_6Pin.pretty")(options "")(descr ""))
-  (lib (name "my_lib")(type "KiCad")(uri "${KIPRJMOD}/libs/zx_bus.pretty")(options "")(descr ""))
+  (lib (name "Connector_Mini-DIN_Female_6Pin")(type "KiCad")(uri "${KIPRJMOD}/libs/Connector_Mini-DIN_Female_6Pin.pretty")(options "")(descr ""))
+  (lib (name "zx_bus")(type "KiCad")(uri "${KIPRJMOD}/libs/zx_bus.pretty")(options "")(descr ""))
 )
