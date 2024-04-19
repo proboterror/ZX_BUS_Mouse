@@ -1,0 +1,1 @@
+https://github.com/4x1md/kicad_libraries/blob/master/Custom_Footprints.pretty/Connector_Mini-DIN_Female_6Pin_2rows.kicad_mod
