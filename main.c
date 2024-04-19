@@ -1,7 +1,17 @@
-// PS/2 mouse support for ZX BUS Kempston Mouse Controller.
-// Read PS/2 port mouse state from PS2_DATA_PIN / PS2_CLK_PIN
-// and set Kempston mouse controller registers via DI_PORT and MX_PIN, MY_PIN, MKEY_PIN strobes.
-// 3 mouse buttons and 4 bit mouse wheel axis supported.
+/*
+	PS/2 mouse support for ZX BUS Kempston Mouse Controller.
+	Read PS/2 port mouse state from PS2_DATA_PIN / PS2_CLK_PIN
+	and set Kempston mouse controller registers via DI_PORT and MX_PIN, MY_PIN, MKEY_PIN strobes.
+	3 mouse buttons and 4 bit mouse wheel axis supported.
+
+	Partially based on "Arduino/Wiring Library for interfacing with a PS2 mouse"
+	https://github.com/kristopher/PS2-Mouse-Arduino
+
+	Notable mention:
+	https://github.com/svofski/mouse1351
+	https://github.com/rucek/arduino-ps2-mouse
+	https://github.com/trol73/avr-mouse-ps2-to-serial
+*/
 
 #if DEBUG
 //Uses "OLED for AVR mikrocontrollers" library, https://github.com/Sylaina/oled-display
