@@ -201,9 +201,6 @@ When a pin is set to be an input, PORTx register DOES NOT contain the logic valu
 #define CLK_READ ((PIN(PS2_CLK_PORT) >> PS2_CLK_PIN) & 0x1)
 #define DATA_READ ((PIN(PS2_DATA_PORT) >> PS2_DATA_PIN) & 0x1)
 
-#define ps2_data() ((PIN(PS2_DATA_PORT) >> PS2_DATA_PIN) & 0x1)
-#define ps2_clk() ((PIN(PS2_CLK_PORT) >> PS2_CLK_PIN) & 0x1)
-
 #define DI_BUS_SET_DELAY 1
 #define REGISTER_SET_DELAY 10
 
