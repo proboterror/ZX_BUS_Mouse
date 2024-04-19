@@ -1,4 +1,10 @@
+// PS/2 mouse support for ZX BUS Kempston Mouse Controller.
+// Read PS/2 port mouse state from PS2_DATA_PIN / PS2_CLK_PIN
+// and set Kempston mouse controller registers via DI_PORT and MX_PIN, MY_PIN, MKEY_PIN strobes.
+// 3 mouse buttons and 4 bit mouse wheel axis supported.
+
 #if DEBUG
+//Uses "OLED for AVR mikrocontrollers" library, https://github.com/Sylaina/oled-display
 #include "lcd.h"
 #endif
 
@@ -24,7 +30,7 @@ Movement Data Packet:
 
 The standard PS/2 mouse sends movement/button information to the host using the following 3-byte packet (4): 
 
-		Bit 7      Bit 6      Bit 5      Bit 4      Bit 3    Bit 2      Bit 1     Bit 0 
+        Bit 7      Bit 6      Bit 5      Bit 4      Bit 3    Bit 2      Bit 1     Bit 0 
 Byte 1  Y overflow X overflow Y sign bit X sign bit Always 1 Middle Btn Right Btn Left Btn
 Byte 2                               X Movement
 Byte 3                               Y Movement
@@ -78,7 +84,7 @@ EBh (Read Data) - The mouse responds with acknowledge (FAh) then sends a movemen
 EAh (Set Stream Mode) - The mouse responds with "acknowledge" then resets its movement counters and enters steram mode.
 E9h (Status Request) - The mouse responds with "acknowledge" then sends the following 3-byte status packet (then resets its movement counters.): 
 
-	   Bit 7     Bit 6 Bit 5  Bit 4   Bit 3    Bit 2    Bit 1      Bit 0
+       Bit 7     Bit 6 Bit 5  Bit 4   Bit 3    Bit 2    Bit 1      Bit 0
 Byte 1 Always 0  Mode  Enable Scaling Always 0 Left Btn Middle Btn Right Btn
 Byte 2                               Resolution
 Byte 3                              Sample Rate
@@ -111,7 +117,7 @@ Set sample rate 80
 
 The host then issues the "Get device ID" command and waits for a response.  If a standard PS/2 mouse (ie, non-Intellimouse) is attached, it will respond with a device ID of 00h.  In this case, the host will recognize the fact that the mouse does have a scrolling wheel and will continue to treat it as a standard PS/2 mouse.  However, if a Microsoft Intellimouse is attached, it will respond with an ID of 03h.  This tells the host that the attached pointing device has a scrolling wheel and the host will then expect the mouse to use the following 4-byte movement data packet: 
 
-		Bit 7      Bit 6      Bit 5      Bit 4      Bit 3    Bit 2      Bit 1     Bit 0 
+        Bit 7      Bit 6      Bit 5      Bit 4      Bit 3    Bit 2      Bit 1     Bit 0 
 Byte 1  Y overflow X overflow Y sign bit X sign bit Always 1 Middle Btn Right Btn Left Btn
 Byte 2                               X Movement
 Byte 3                               Y Movement
@@ -164,12 +170,11 @@ enum mouse_resolution
 #define DEFAULT_MOUSE_DEVICE_ID 0
 #define INTELLIMOUSE_DEVICE_ID 3
 
-#define ENABLE_WHEEL 1
 // Valid sample rates are 10, 20, 40, 60, 80, 100, and 200 samples/sec.
 #define PS2_SAMPLES_PER_SEC 60
 
 #define PS2_DATA_PORT D
-#define PS2_DATA_PIN 4
+#define PS2_DATA_PIN 3
 #define PS2_CLK_PORT D
 #define PS2_CLK_PIN 2
 
@@ -192,55 +197,54 @@ When a pin is set to be an input, PORTx register DOES NOT contain the logic valu
 */
 #define low(PORT_, PIN_) PORT(PORT_) &= ~(1 << PIN_)
 #define high(PORT_, PIN_) PORT(PORT_) |= (1 << PIN_)
-/*
-typedef struct bits_t
-{
-	uint8_t bit0 : 1;
-	uint8_t bit1 : 1;
-	uint8_t bit2 : 1;
-	uint8_t bit3 : 1;
-	uint8_t bit4 : 1;
-	uint8_t bit5 : 1;
-	uint8_t bit6 : 1;
-	uint8_t bit7 : 1;
-} bits;
 
-#define PORTD_BITS (*((volatile bits *)&PORTD))
-#define DDRD_BITS (*((volatile bits *)&DDRD))
-#define PIND_BITS (*((volatile bits *)&PIND))
-*/
-//#define KBD_CLK  PORTD_BITS.bit2
-//#define KBD_DATA PORTD_BITS.bit4
-//#define KBD_CLK_DIR  DDRD_BITS.bit2
-//#define KBD_DATA_DIR DDRD_BITS.bit4
-#define MCLK 2 // ToDo: replace with PS2_CLK_PORT / PS2_CLK_PIN
-#define MDATA 4 // ToDo: replace with PS2_DATA_PORT / PS2_DATA_PIN
-//#define CLK_READ PIND_BITS.bit2
-//#define DATA_READ PIND_BITS.bit4
 #define CLK_READ ((PIN(PS2_CLK_PORT) >> PS2_CLK_PIN) & 0x1)
 #define DATA_READ ((PIN(PS2_DATA_PORT) >> PS2_DATA_PIN) & 0x1)
 
 #define ps2_data() ((PIN(PS2_DATA_PORT) >> PS2_DATA_PIN) & 0x1)
 #define ps2_clk() ((PIN(PS2_CLK_PORT) >> PS2_CLK_PIN) & 0x1)
 
-/*uint8_t*/int16_t mouse_x = 128;
-/*uint8_t*/int16_t mouse_y = 96;
-uint8_t mouse_buttons = 0; // ToDo: check PS/2 and Kempston buttons bits. Bit 2: Middle Btn bit 1: Right Btn bit 0: Left Btn
+#define DI_BUS_SET_DELAY 1
+#define REGISTER_SET_DELAY 10
+
+// Kempston mouse interface axis data, increased by reported PS/2 mouse axis coordinate delta.
+// 8-bit values are wrapped and not clamped.
+uint8_t mouse_x = 128;
+uint8_t mouse_y = 96;
+// Value read from PS/2 mouse data packet. Should be inverted for Kempston mouse.
+// Bit 2: middle button, bit 1: right button, bit 0: left button.
+// Unlike PS/2 mouse, Kempston mouse can have 4 buttons.
+uint8_t mouse_buttons = 0;
 
 #if ENABLE_WHEEL
 bool mouse_wheel_enabled = false; // Mouse wheel present flag.
-int8_t mouse_z = 0;
+/*
+Absolute mouse wheel axis value.
+0x0 by default, increased / decreased by reported mouse wheel delta.
+Matched Unreal Speccy 0.39.0 behaviour.
+References:
+https://groups.google.com/g/fido7.real.speccy/c/Qeid4aFhjRg
+https://groups.google.com/g/fido7.zx.spectrum/c/vpr8vh2X2sA
+https://zxpress.ru/article.php?id=6538 (DonNews #19)
+*/
+int8_t mouse_z = 0b00000000;
 #endif
 
-enum ps2_state_t
+typedef enum
 {
 	PS2_STATE_ERROR,
 	PS2_STATE_OK
-};
+} ps2_state_t;
 
-uint8_t ps2_state = PS2_STATE_OK;
+ps2_state_t ps2_state = PS2_STATE_OK;
 
-void gohi(int pin)
+typedef enum
+{
+	MCLK,
+	MDATA
+} mouse_pin_t;
+
+void gohi(mouse_pin_t pin)
 {
 	switch (pin)
 	{
@@ -255,7 +259,7 @@ void gohi(int pin)
 	};
 }
 
-void golo(int pin)
+void golo(mouse_pin_t pin)
 {
 	switch (pin)
 	{
@@ -448,31 +452,68 @@ int main(void)
 {
 #if DEBUG
 	lcd_init(LCD_DISP_ON); // init lcd and turn on
+
+	lcd_gotoxy(0, 2);
+	lcd_puts("Init...");
 #endif
+	// Reboot controller in case of init lock.
+	// Microsoft Mouse Port Compatible Mouse 2.1A (FCC ID: C3KKS8, Part No 92841): takes more than 1s to init after power on.
+	// Logitech M-SBF96 (P/N 852209-A000): requires 1s delay after power on before init.
+	wdt_enable(WDTO_2S);
+
 	mouse_init();
 
+	wdt_disable();
+
+#if DEBUG
+	lcd_puts("Done");
+#endif
+	// Set CPLD ports to output.
 	DDR(DI_PORT) = 0xFF;
 	output(MX_PORT, MX_PIN);
 	output(MY_PORT, MY_PIN);
 	output(MKEY_PORT, MKEY_PIN);
 
-	PORT(DI_PORT) = 0x00;
 	low(MX_PORT, MX_PIN);
 	low(MY_PORT, MY_PIN);
 	low(MKEY_PORT, MKEY_PIN);
 
-#if ENABLE_WHEEL
-		lcd_gotoxy(0, 3);
+	// Set initial MX, MY, MKEY values to CPLD controller registers. Changed after first PS/2 mouse event packet received.
+	// Data written to registers on rising_edge.
+	// Questionable, some code attempting to detect Kempston mouse presence by checking X=Y=0xFF, some other by checking X!=Y or buttons=0b111.
+	// Actually there is no reliable method to detect Kempston mouse presence.
 
-		if (mouse_wheel_enabled)
-		{
-			lcd_puts("Intellimouse mode");
-		}
-		else
-		{
-			lcd_puts("Standard mode");
-		}
+	PORT(DI_PORT) = 0xFF;
+	_delay_us(DI_BUS_SET_DELAY);
+	high(MX_PORT, MX_PIN);
+	_delay_us(REGISTER_SET_DELAY);
+	low(MX_PORT, MX_PIN);
+
+	PORT(DI_PORT) = 0x80;
+	_delay_us(DI_BUS_SET_DELAY);
+	high(MY_PORT, MY_PIN);
+	_delay_us(REGISTER_SET_DELAY);
+	low(MY_PORT, MY_PIN);
+
+	PORT(DI_PORT) = 0x60;
+	_delay_us(DI_BUS_SET_DELAY);
+	high(MKEY_PORT, MKEY_PIN);
+	_delay_us(REGISTER_SET_DELAY);
+	low(MKEY_PORT, MKEY_PIN);
+
+#if DEBUG
+	lcd_gotoxy(0, 3);
+#if ENABLE_WHEEL
+	if (mouse_wheel_enabled)
+	{
+		lcd_puts("Intellimouse mode");
+	}
+	else
 #endif
+	{
+		lcd_puts("Standard mode");
+	}
+#endif // DEBUG
 
 	while (1)
 	{
@@ -484,29 +525,32 @@ int main(void)
 #if ENABLE_WHEEL
 		if (mouse_wheel_enabled)
 		{
-			mouse_z = (int8_t)mouse_read_byte();
+			mouse_z -= (int8_t)mouse_read_byte(); // Axis direction matched Unreal Speccy 0.39.0 behaviour.
+			mouse_z &= 0b00001111;
 		}
 #endif
+		// Set MX, MY, MKEY values to controller registers.
+		// Data written to registers on rising_edge.
 		PORT(DI_PORT) = mouse_x;
-		_delay_us(1);
+		_delay_us(DI_BUS_SET_DELAY);
 		high(MX_PORT, MX_PIN);
-		_delay_us(10);
+		_delay_us(REGISTER_SET_DELAY);
 		low(MX_PORT, MX_PIN);
 
 		PORT(DI_PORT) = mouse_y;
-		_delay_us(1);
+		_delay_us(DI_BUS_SET_DELAY);
 		high(MY_PORT, MY_PIN);
-		_delay_us(10);
+		_delay_us(REGISTER_SET_DELAY);
 		low(MY_PORT, MY_PIN);
 
 #if ENABLE_WHEEL
-		PORT(DI_PORT) = (mouse_buttons & 0b00000111) | (mouse_z << 4);
+		PORT(DI_PORT) = (~mouse_buttons & 0b00000111) | (mouse_z << 4) | (0b00001000); // Bit 4 is 4th mouse button (not pressed)
 #else
-		PORT(DI_PORT) = (mouse_buttons & 0b00000111);
+		PORT(DI_PORT) = (~mouse_buttons & 0b00000111) | (0b11111000); // Unused port bits set to 1 (mouse_z axis, 4th mouse button)
 #endif
-		_delay_us(1);
+		_delay_us(DI_BUS_SET_DELAY);
 		high(MKEY_PORT, MKEY_PIN);
-		_delay_us(10);
+		_delay_us(REGISTER_SET_DELAY);
 		low(MKEY_PORT, MKEY_PIN);
 
 #if DEBUG
@@ -523,10 +567,13 @@ int main(void)
 		lcd_puts(buf);
 		lcd_puts(" ");
 #endif
+		itoa((mouse_buttons & 0b00000111), buf, 10);
+		lcd_puts(buf);
 #endif // DEBUG
+
 		if (ps2_state == PS2_STATE_ERROR)
 		{
-			wdt_enable(WDTO_1S); // reboot controller in case of error
+			wdt_enable(WDTO_1S); // Reboot controller in case of error.
 		}
 	};
 

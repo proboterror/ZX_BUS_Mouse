@@ -112,6 +112,7 @@ CFLAGS += $(patsubst %,-I%,$(EXTRAINCDIRS))
 CFLAGS += $(CSTANDARD)
 CFLAGS += -DF_CPU=$(F_CPU)
 CFLAGS += -DDEBUG=1
+CFLAGS += -DENABLE_WHEEL=1
 #CFLAGS += -E
 #CFLAGS += -finput-charset=utf-8 -fexec-charset=iso-8859-15
 
