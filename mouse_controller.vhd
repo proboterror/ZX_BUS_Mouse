@@ -12,7 +12,7 @@ entity register_generic_3_state is
 generic(data_width : integer := 8);
 port(
 		D: in bit_vector(data_width - 1 downto 0);
-		Q: out std_logic_vector(data_width - 1 downto 0) := (others => 'Z');
+		Q: out std_logic_vector(7 downto 0) := (others => 'Z'); -- Assume output is always 8-bit wide.
 		C: in std_ulogic := '0'; -- clock (active high)
 		OE: in bit := '0' -- output enable (active high)
 	);
@@ -26,7 +26,7 @@ begin
 		if (OE = '0') then
 			Q <= (others => 'Z');
 		else
-			Q <= to_stdlogicvector(DATA);
+			Q <= to_stdlogicvector((7 downto data_width => '1') & DATA); -- Unused data bits in output should be set to 1.
 		end if;
 
 		if rising_edge(C) then
@@ -71,7 +71,7 @@ component register_generic_3_state
 generic(data_width : integer := 8);
 port(
 		D: in bit_vector(data_width - 1 downto 0);
-		Q: out std_logic_vector(data_width - 1 downto 0);
+		Q: out std_logic_vector(7 downto 0);
 		C: in std_ulogic;
 		OE: in bit
 	);
@@ -100,7 +100,7 @@ begin
 	-- ToDo: check port #FADF 3-7 bits state.
 	register_key: register_generic_3_state
 	generic map(data_width => 3)
-	port map(DI(2 downto 0), D(2 downto 0), C => to_stdulogic(MKEY), OE => MKEY_SEL);
+	port map(DI(2 downto 0), D, C => to_stdulogic(MKEY), OE => MKEY_SEL);
 	-- Note:
 	-- https://velesoft.speccy.cz/kmouse/km-doc/kempston_mouse_turbo_interface/km-t_2011/k-mouse2011-doc.pdf:
 	-- If wheel is off then D4-D7 on button port return 1111.
