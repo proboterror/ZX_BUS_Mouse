@@ -385,7 +385,7 @@
     )
   )
 
-  (footprint "my_lib:PinSocket_1x31_P2.54mm_2" (layer "F.Cu")
+  (footprint "zx_bus:PinSocket_1x31_P2.54mm_2" (layer "F.Cu")
     (tstamp 73691627-c8ab-4b14-8bd2-2b3af335cd0b)
     (at 53.975 145.034 90)
     (descr "Through hole straight socket strip, 1x31, 2.54mm pitch, single row (from Kicad 4.0.7), script generated")
@@ -1971,7 +1971,7 @@
     )
   )
 
-  (footprint "my_lib:PinSocket_1x31_P2.54mm_2" (layer "B.Cu")
+  (footprint "zx_bus:PinSocket_1x31_P2.54mm_2" (layer "B.Cu")
     (tstamp ffacec67-139e-41be-8609-a4af79cdc32e)
     (at 53.975 145.034 -90)
     (descr "Through hole straight socket strip, 1x31, 2.54mm pitch, single row (from Kicad 4.0.7), script generated")
