@@ -59,9 +59,9 @@ KEMPSTON-MOUSE<br>
 (С) Mad Max
 
 [Spectrofon #20 (12 октября 1996)](https://zxpress.ru/article.php?id=4708)
-[[text]](spectrofon_20.txt)
+[[text]](history/spectrofon_20.txt)
 [[screenshot]](history/spectrofon_20.png)
-[[Схема]](history/spectrofon_20_kempston_mouse.png)<br>
+[[схема]](history/spectrofon_20_kempston_mouse.png)<br>
 ZX-SPECTRUM и МЫШЬ<br>
 (C) Владимиp Лаpьков, 1996, Санкт-Петербург
 
@@ -141,8 +141,8 @@ Closed source
 [Схема контроллера Kempston Mouse для Nemo-BUS](https://zxbyte.ru/kempston_mouse_for_zx.htm) (модификация схемы из Spectrofon #20)<br>
 (C) Prusak 2016
 
-[Контроллер для USB клавиатуры и мыши](https://zx-pk.ru/threads/34912-kontroller-dlya-usb-klaviatury-i-myshi.html)<br>
-[github](https://github.com/Igor-azx987sa/ZXKM)<br>
+[Контроллер для USB клавиатуры и мыши](https://zx-pk.ru/threads/34912-kontroller-dlya-usb-klaviatury-i-myshi.html)
+[[github]](https://github.com/Igor-azx987sa/ZXKM)<br>
 (С) Игорь Матвеев @azx987sa 2023<br>
 Микроконтроллер CH9350<br>
 Closed source
@@ -184,7 +184,6 @@ PS/2 мышь может требовать задержку перед инициализацией после подачи питания. Ре
 |C10|1|22u|C_Polarized|Capacitor_Tantalum_SMD:CP_EIA-6032-28_Kemet-C_Pad2.25x2.35mm|Polarized capacitor|
 |J4|1|Mini-DIN-6|Mini-DIN-6|Connector_Mini-DIN_Female_6Pin_2rows|6-pin Mini-DIN connector|
 |J5|1|Conn_02x03_Odd_Even ISP|Conn_02x03_Odd_Even|Connector_PinHeader_2x03_P2.54mm_Vertical||
-|J6|1|Conn_01x04 Debug|Conn_01x04|Connector_PinHeader_1x04_P2.54mm_Vertical||
 |J7|1|Conn_02x05_Odd_Even JTAG|Conn_02x05_Odd_Even|Connector_IDC-Header_2x05_P2.54mm_Vertical||
 |R1|1|2.2K|R|Resistor_SMD:R_1206_3216Metric|Resistor|
 |R2, R3|2|4.7K|R|Resistor_SMD:R_1206_3216Metric|Resistor|
@@ -195,14 +194,15 @@ PS/2 мышь может требовать задержку перед инициализацией после подачи питания. Ре
 
 IC Socket PLCC-44 THT DIP
 
-Разъем PS/2 зеленый с прямыми ушками.<br>
-Разъемы программаторов - любой pin header 2x03, 2x05 2.54mm. Запаивать их не обязательно.<br>
-Конденсаторы линейного преобразователя напряжения танталовые согласно [datasheet](http://www.advanced-monolithic.com/pdf/ds1117.pdf).
+Разъем J4 PS/2 зеленый с прямыми ушками.<br>
+Разъемы программаторов J5, J7 - любой pin header 2x03, 2x05 2.54mm. Запаивать их не обязательно.<br>
+Конденсаторы C9, C10 линейного преобразователя напряжения танталовые согласно [datasheet](http://www.advanced-monolithic.com/pdf/ds1117.pdf).
 
 Отладочные компоненты:
 |Ref|Qnty|Value|Cmp name|Footprint|Description|
 |-----|-----|-----|-----|-----|-----|
 |R8, R9|2|2.2K|R|Resistor_SMD:R_1206_3216Metric|Resistor|
+|J6|1|Conn_01x04 Debug|Conn_01x04|Connector_PinHeader_1x04_P2.54mm_Vertical||
 
 ## Сборка прошивок
 
