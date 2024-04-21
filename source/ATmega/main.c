@@ -11,6 +11,7 @@
 	https://github.com/svofski/mouse1351
 	https://github.com/rucek/arduino-ps2-mouse
 	https://github.com/trol73/avr-mouse-ps2-to-serial
+	ZX Evolution ATmega128 peripheral controller avr source, http://svn.zxevo.ru/listing.php?repname=pentevo
 */
 
 #if DEBUG
