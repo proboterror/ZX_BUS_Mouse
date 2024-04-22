@@ -228,12 +228,14 @@ uint8_t mouse_buttons = 0;
 bool mouse_wheel_enabled = false; // Mouse wheel present flag.
 /*
 Absolute mouse wheel axis value.
-0x0 by default, increased / decreased by reported mouse wheel delta.
+0b0000 by default if mouse wheel presented else 0b1111.
+Increased / decreased by reported mouse wheel delta.
 Matched Unreal Speccy 0.39.0 behaviour.
 References:
 https://groups.google.com/g/fido7.real.speccy/c/Qeid4aFhjRg
 https://groups.google.com/g/fido7.zx.spectrum/c/vpr8vh2X2sA
 https://zxpress.ru/article.php?id=6538 (DonNews #19)
+https://velesoft.speccy.cz/kmouse/km-doc/kempston_mouse_turbo_interface/km-t_2011/k-mouse2011-doc.pdf
 */
 int8_t mouse_z = 0b00000000;
 #endif
@@ -434,6 +436,10 @@ void mouse_init(void)
 	// Standard PS/2 mouse will respond with device ID = 00h.
 	// Microsoft Intellimouse will respond with an ID of 03h.
 	mouse_wheel_enabled = (mouse_read_byte() == INTELLIMOUSE_DEVICE_ID);
+
+	// If mouse wheel not presented then bits 7-4 on buttons port returns 1111.
+	if(!mouse_wheel_enabled)
+		mouse_z = 0b00001111;
 #endif
 	// Set mouse resolution.
 	mouse_write_byte_read_ack(MOUSE_SET_RESOLUTION);
