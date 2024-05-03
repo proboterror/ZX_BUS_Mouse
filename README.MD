@@ -110,6 +110,13 @@ KEMPSTON MOUSE INTERFACE<br>
 Микроконтроллер AT90S2313 (или AT90S1200), исходный код прошивки закрыт.<br>
 Использует сигнал WAIT при опросе регистров интерфейса.
 
+[PS/2 -> Kempston Mouse Adapter v4.0](history/zxkmv40.zip)
+[[схема]](history/zxkm4.png)<br>
+(C)2010 Kamil Karimov<br>
+Не использует сигнал WAIT.<br>
+Для обеспечения работы контроллера без торможения Z80 микроконтроллер ATTiny2313 работает на частоте 20 Мгц.<br>
+Исходный код прошивки микроконтроллера закрыт.
+
 The Kempston Mouse Turbo Interface [2006/2008](https://velesoft.speccy.cz/kmturbo-cz.htm)/[2011](https://velesoft.speccy.cz/kmouse/km-doc/kempston_mouse_turbo_interface/km-t_2011/k-mouse2011-doc.pdf) by Velesoft and Ben Versteeg<br>
 [PC Mouse and Kempston joystick Interface for the Sinclair ZX Spectrum](https://www.benophetinternet.nl/hobby/kmt/)<br>
 Поддержка master/slave mouse, mouse wheel.<br>
