@@ -128,7 +128,7 @@ The Kempston Mouse Turbo Interface [2006/2008](https://velesoft.speccy.cz/kmturb
 Позволяет подключать к ZX Spectrum стандартную клавиатуру и мышь с интерфейсом PS/2, IDE-устройства, карты флеш-памяти стандарта SD. Устройство предназначено для установки в слот ZX Bus.<br>
 [Документация](http://svn.zxevo.ru/filedetails.php?repname=pentevo&path=/docs/ZC.pdf)<br>
 Микроконтроллер КР1878ВЕ1 + CPLD EPM7128SLC84<br>
-Closed source
+[Исходный код прошивок CPLD и микроконтроллера открыт в 2024 году](https://github.com/koe1234/Z-controller)
 
 [ZX Evolution](http://www.nedopc.com/zxevo/zxevo.php)<br>
 (C) NedoPC 2010<br>
