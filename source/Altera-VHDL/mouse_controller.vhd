@@ -54,7 +54,7 @@ port(
 		IORQ: in bit; -- active low
 		A8: in bit;
 		A10: in bit;
-		IORQGE: out std_logic := 'Z'; -- 1 when address lower bits and M1 == 1 (address partial match), Z state otherwise.
+		IORQGE: out std_logic := '1'; -- 0 when address lower bits and M1 == 1 (address partial match), 1 state otherwise. Connected to 74LVC1G125 3-state buffer OE/ pin, TTL 5V output.
 
 		MX: in bit;
 		MY: in bit;
@@ -83,7 +83,7 @@ signal enable: bit;
 
 begin
 	address_partial_match <= not(A0 and A1 and A7 and M1 and not A5);
-	IORQGE <= '1' when address_partial_match = '0' else 'Z';
+	IORQGE <= '0' when address_partial_match = '0' else '1';
 	enable <= not(address_partial_match or RD or IORQ);
 	
 	MKEY_SEL <= enable and not A8 and not A10;
