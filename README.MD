@@ -19,14 +19,12 @@
 * Добавлен разъем для подключения внешнего брекета PS/2 (распространенная распиновка PC AT 486/Pentium материнских плат)
 * Добавлен разъем UART для отладки
 * Ширина краевого разъема ZX-BUS увеличена с 80 до 81 мм
-* Есть потенциал оптимизации кода для поддержки колеса мыши на EPM3032 при отказе от третьей кнопки мыши
+* Описание схемы в CPLD переписано на Verilog и оптимизировано для поддержки колеса мыши на EPM3032 при отказе от третьей кнопки мыши (32 macrocells). Возможна сборка без поддержки колеса мыши (31 macrocells) и с полной поддержкой (34 macrocells).
 
 **ToDo:**
-* Переписать код описания схемы в CPLD более понятным образом без generic'ов и громоздких сущностей регистров, возможно на Verilog
 * В прошивке MCU ATmega проверить/исправить переход значений осей через 0x0F
 * Проверить корректнось схемы дешифрации [?](https://t.me/zs_scorpion/578464)
 * Проверить/исправить выстановку данных на шину относительно IORQ/RD [?](https://t.me/zs_scorpion/578621)
-* Сделать опцию для сборки прошивки CPLD без поддержки третьей кнопки и с поддержкой колеса прокрутки для EPM3032 [?](https://bitbucket.org/MikhaelK/zx_kempston_cpld/src/master/epm3032/spi_zx-km.v) [??](https://t.me/zs_scorpion/578659)
 
 ## Входные требования:
 * Разработать максимально компактный простой в повторении интерфейс PS/2 Kempston Mouse для шины ZX BUS.
@@ -291,22 +289,25 @@ CPLD определяется в Quartus, но не прошивается.<br>
 Бывшие в употреблении чипы EPM3032 могут быть залочены и не видны через JTAG интерфейс. Можно [попытать удачи в процедуре unlock](https://zx-pk.ru/threads/25998-programmator-mikroskhem-programmiruemoj-logiki(cpld).html?p=1043136&viewfull=1#post1043136), или заказать у другого поставщика.
 
 ### Поддержка mouse wheel
-Включение поддержки mouse wheel в регистре кнопок контроллера:
+Поддержка mouse wheel в регистре кнопок контроллера включена по умолчанию с отключенной третьей кнопкой мыши. Эта реализация использует 32 macrocells и помещается в EPM3032 (source/Altera-VHDL/mouse_controller.v):
 ```
-	register_key: register_generic_3_state
-	generic map(data_width => 3)
-	port map(DI(2 downto 0), D, C => to_stdulogic(MKEY), OE => MKEY_SEL);
+	// Example 2 buttons mouse support with mouse wheel (32 macrocells)
+	// Exclude 3rd mouse button and reserved bit from output in order to fit to EPM3032.
+	assign D = MKEY_SEL ? {register_key[7:4], 2'b11, register_key[1:0]} : 8'hZ;
 ```
-заменить на:
+Для поддержки третьей кнопки мыши без колеса прокрутки заменить на:
 ```
-	register_key: register_generic_3_state
-	port map(DI, D, C => to_stdulogic(MKEY), OE => MKEY_SEL);
+	// Example 3 buttons mouse support with mouse wheel turned off (31 macrocells)
+	assign D = MKEY_SEL ? {4'b1111, register_key[3:0]} : 8'hZ;
+```
+Для полной поддержки заменить на:
+```
+	// Example 3 buttons mouse support with mouse wheel (34 macrocells)
+	assign D = MKEY_SEL ? register_key : 8'hZ;
 ```
 Целевым устройством указать EPM3064.
 
-Текущая реализация использует 35 macrocells вместо 30. На EPM3032 доступно 32 macrocells, на EPM3064 64 macrocells.
-
-Работа mouse wheel проверялась на EPM3032 с отключенной одной из осей X/Y. Работа с EPM3064 не тестировалась.
+Работа с EPM3064 не тестировалась.
 
 ## Отладка
 ПО для тестирования интерфейса: [MousTest (C) 2012 Patrik Rak - Raxoft](test/Test%20Mouse.trd.zip)
