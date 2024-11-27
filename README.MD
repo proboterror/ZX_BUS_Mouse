@@ -9,6 +9,14 @@
 ![pcb](images/pcb.png)
 ![scheme](images/scheme.png)
 
+## История версий
+**Version_1.0**
+* Сигнал IORQGE/ имеет уровень 3.3V (LVTTL). Плата не работает корректно в ZX-BUS XTRaiser.
+* Для включения поддержки колеса мыши нужна CPLD EPM3064.
+
+**Исправления:**
+* Описание схемы в CPLD переписано на Verilog.
+
 ## Входные требования:
 * Разработать максимально компактный простой в повторении интерфейс PS/2 Kempston Mouse для шины ZX BUS.
 * Исходники прошивок микроконтролллеров / CPLD, схема и разводка платы должны быть полностью открыты.
@@ -274,18 +282,17 @@ CPLD определяется в Quartus, но не прошивается.<br>
 ### Поддержка mouse wheel
 Включение поддержки mouse wheel в регистре кнопок контроллера:
 ```
-	register_key: register_generic_3_state
-	generic map(data_width => 3)
-	port map(DI(2 downto 0), D, C => to_stdulogic(MKEY), OE => MKEY_SEL);
+	// Example 3 buttons mouse support with mouse wheel turned off (31 macrocells)
+	assign D = MKEY_SEL ? {4'b1111, register_key[3:0]} : 8'hZ;
 ```
 заменить на:
 ```
-	register_key: register_generic_3_state
-	port map(DI, D, C => to_stdulogic(MKEY), OE => MKEY_SEL);
+	// Example 3 buttons mouse support with mouse wheel (35 macrocells)
+	assign D = MKEY_SEL ? register_key : 8'hZ;
 ```
 Целевым устройством указать EPM3064.
 
-Текущая реализация использует 35 macrocells вместо 30. На EPM3032 доступно 32 macrocells, на EPM3064 64 macrocells.
+Текущая реализация использует 35 macrocells вместо 31. На EPM3032 доступно 32 macrocells, на EPM3064 64 macrocells.
 
 Работа mouse wheel проверялась на EPM3032 с отключенной одной из осей X/Y. Работа с EPM3064 не тестировалась.
 
