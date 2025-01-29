@@ -62,6 +62,9 @@ KEMPSTON-MOUSE<br>
 
 Фирма Scorpion & Д.К. (Санкт-Петербург 1995-97)<br>
 [Контроллер IBM PC-клавиатуры и мыши](https://web.archive.org/web/20010308054936/http://scorpion.ru/spectrum/hard/kontroller_IBM.htm)<br>
+[Схема](history/scorpion_keyboard_mouse_controller_scheme.png) [Прошивка V2.5](history/scorpion_keyboard_mouse_controller_2.5_firmware.zip)<br>
+Инструкция по работе и подключению: V2.1: [1](history/scorpion_keyboard_mouse_controller_2.1_1.png) [2](history/scorpion_keyboard_mouse_controller_2.1_2.png) 
+V2.5: [1](history/scorpion_keyboard_mouse_controller_2.5_1.jpg) [2](history/scorpion_keyboard_mouse_controller_2.5_2.jpg)<br>
 Публикации:
 [ZX Format #01 (31 октября 1995)](https://zxpress.ru/article.php?id=319)
 [On-Line #15 (17 декабря 1995)](https://zxpress.ru/article.php?id=1989)
