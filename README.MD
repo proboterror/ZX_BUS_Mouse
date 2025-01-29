@@ -323,6 +323,19 @@ CFLAGS += -DDEBUG=1
 ```
 Можно отследить шаги инициализации устройства PS/2, тип устройства, обработку осей, кнопок и колеса мыши.
 
+Проверка инициализации и работы PS/2 мыши микроконтроллером ATmega8:<br>
+Вариант 1:<br>
+- Вставить OLED дисплей 128x132 в разъем I2C.
+- Прошить отладочную прошивку [ZX_BUS_Mouse_ATmega8_Fuses_C4_D9_Debug_OLED_128x32.hex](source/ATmega/Debug/ZX_BUS_Mouse_ATmega8_Fuses_C4_D9_Debug_OLED_128x32.hex)
+
+При включении выводится надписи Init... Done и далее при движении мыши ее координаты и состояние оси wheel / кнопок.
+
+Вариант 2:<br>
+- Присоединить светодиод к контактам разъема I2C GND и SDA. Короткий пин светодиода к GND.
+- Прошить отладочную прошивку [ZX_BUS_Mouse_ATmega8_Fuses_C4_D9_Debug_LED_SDA_GND.hex](source/ATmega/Debug/ZX_BUS_Mouse_ATmega8_Fuses_C4_D9_Debug_LED_SDA_GND.hex)
+
+При включении после успешной инициализации PS/2 мыши светодиод загорается. При нажатии кнопок гаснет.
+
 ## Credits
 * Общая идея контроллера Kempston Mouse на связке ATmega+EPM3032, схема включения и выбор битов адреса для дешифрации портов: [Deltagon 1.5](https://t.me/Pentagon_ZX_Chat/126403) (C) Евгений Королёв @djking26, Игорь Матвеев @azx987sa 
 * @Alex_Eburg - [ZX BUS PCB Prototype Board](https://github.com/AlexEkb4ever/ZX_BUS)
