@@ -213,7 +213,7 @@ When a pin is set to be an input, PORTx register DOES NOT contain the logic valu
 #define DATA_READ ((PIN(PS2_DATA_PORT) >> PS2_DATA_PIN) & 0x1)
 
 #define DI_BUS_SET_DELAY 1
-#define REGISTER_SET_DELAY 10
+#define REGISTER_SET_DELAY 1
 
 // Kempston mouse interface axis data, increased by reported PS/2 mouse axis coordinate delta.
 // 8-bit values are wrapped and not clamped.
@@ -459,24 +459,6 @@ void mouse_init(void)
 
 int main(void)
 {
-#if DEBUG
-	lcd_init(LCD_DISP_ON); // init lcd and turn on
-
-	lcd_gotoxy(0, 2);
-	lcd_puts("Init...");
-#endif
-	// Reboot controller in case of init lock.
-	// Microsoft Mouse Port Compatible Mouse 2.1A (FCC ID: C3KKS8, Part No 92841): takes more than 1s to init after power on.
-	// Logitech M-SBF96 (P/N 852209-A000): requires 1s delay after power on before init.
-	wdt_enable(WDTO_2S);
-
-	mouse_init();
-
-	wdt_disable();
-
-#if DEBUG
-	lcd_puts("Done");
-#endif
 	// Set CPLD ports to output.
 	DDR(DI_PORT) = 0xFF;
 	output(MX_PORT, MX_PIN);
@@ -509,6 +491,25 @@ int main(void)
 	high(MKEY_PORT, MKEY_PIN);
 	_delay_us(REGISTER_SET_DELAY);
 	low(MKEY_PORT, MKEY_PIN);
+
+#if DEBUG
+	lcd_init(LCD_DISP_ON); // init lcd and turn on
+
+	lcd_gotoxy(0, 2);
+	lcd_puts("Init...");
+#endif
+	// Reboot controller in case of init lock.
+	// Microsoft Mouse Port Compatible Mouse 2.1A (FCC ID: C3KKS8, Part No 92841): takes more than 1s to init after power on.
+	// Logitech M-SBF96 (P/N 852209-A000): requires 1s delay after power on before init.
+	wdt_enable(WDTO_2S);
+
+	mouse_init();
+
+	wdt_disable();
+
+#if DEBUG
+	lcd_puts("Done");
+#endif
 
 #if DEBUG
 	lcd_gotoxy(0, 3);
