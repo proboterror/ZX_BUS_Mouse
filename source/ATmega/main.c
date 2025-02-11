@@ -474,19 +474,19 @@ int main(void)
 	// Questionable, some code attempting to detect Kempston mouse presence by checking X=Y=0xFF, some other by checking X!=Y or buttons=0b111.
 	// Actually there is no reliable method to detect Kempston mouse presence.
 
-	PORT(DI_PORT) = 0xFF;
+	PORT(DI_PORT) = 0x80;
 	_delay_us(DI_BUS_SET_DELAY);
 	high(MX_PORT, MX_PIN);
 	_delay_us(REGISTER_SET_DELAY);
 	low(MX_PORT, MX_PIN);
 
-	PORT(DI_PORT) = 0x80;
+	PORT(DI_PORT) = 0x60;
 	_delay_us(DI_BUS_SET_DELAY);
 	high(MY_PORT, MY_PIN);
 	_delay_us(REGISTER_SET_DELAY);
 	low(MY_PORT, MY_PIN);
 
-	PORT(DI_PORT) = 0x60;
+	PORT(DI_PORT) = 0xFF;
 	_delay_us(DI_BUS_SET_DELAY);
 	high(MKEY_PORT, MKEY_PIN);
 	_delay_us(REGISTER_SET_DELAY);
