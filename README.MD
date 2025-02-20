@@ -238,6 +238,7 @@ Gluk Reset Service провер€ет наличие мыши сразу после включени€.<br>
 |U1|1|ATmega8A-U|ATmega8A-U|Package_QFP:TQFP-32_7x7mm_P0.8mm|16MHz, 8kB Flash, 1kB SRAM, 512B EEPROM, TQFP-32|
 |U2|1|EPM3032ALC44|EPM3032ALC44|Package_LCC:PLCC-44_THT-Socket|CPLD MAX3000A MCs:32 IOs:34 [PLCC-44]|
 |U3|1|AMS1117-3.3|AMS1117-3.3|Package_TO_SOT_SMD:SOT-223-3_TabPin2|1A Low Dropout regulator, positive, 3.3V fixed output, SOT-223|
+|U4|1|74LVC1G125DB|74LVC1G125|Package_TO_SOT_SMD:SOT-23-5|Single Buffer Gate Tri-State, Low-Voltage CMOS|
 
 IC Socket PLCC-44 THT DIP
 
