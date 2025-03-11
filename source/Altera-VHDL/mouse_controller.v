@@ -64,13 +64,10 @@ module mouse_controller
 	assign D = MX_SEL ? register_x : 8'hZ;
 	assign D = MY_SEL ? register_y : 8'hZ;
 
-	// Example 3 buttons mouse support with mouse wheel (34 macrocells)
-	//assign D = MKEY_SEL ? register_key : 8'hZ;
-	
-	// Example 2 buttons mouse support with mouse wheel (32 macrocells)
-	// Exclude 3rd mouse button and reserved bit from output in order to fit to EPM3032.
-	assign D = MKEY_SEL ? {register_key[7:4], 2'b11, register_key[1:0]} : 8'hZ;
-
-	// Example 3 buttons mouse support with mouse wheel turned off (31 macrocells)
-	//assign D = MKEY_SEL ? {4'b1111, register_key[3:0]} : 8'hZ;
+	// Quirk to support 3 buttons mouse with mouse wheel turned on (32 macrocells):
+	// register_key[1:0] values: 0..2: single pressed key index; 3: keys not pressed.
+	// Only one mouse key can be pressed at the moment; requires matching MCU firmware.
+	// Suggested by @DDV81
+	wire [2:0] KEY = 1 << register_key[1:0];
+	assign D = MKEY_SEL ? {register_key[7:4], 1'b1, ~KEY} : 8'hZ;
 endmodule

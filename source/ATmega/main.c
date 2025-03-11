@@ -554,7 +554,19 @@ int main(void)
 		low(MY_PORT, MY_PIN);
 
 #if ENABLE_WHEEL
-		PORT(DI_PORT) = (~mouse_buttons & 0b00000111) | (mouse_z << 4) | (0b00001000); // Bit 4 is 4th mouse button (not pressed)
+		// Quirk to fit in EPM3032 32 macrocells limitation with mouse wheel and 3 buttons support.
+		// Assume only one button can be pressed and sent to MKEY controller register at a time.
+		// Special mouse_buttons values: 0-2: pressed button index, 3: no button pressed.
+		if(mouse_buttons & 0b001)
+			mouse_buttons = 0;
+		else if (mouse_buttons & 0b010)
+			mouse_buttons = 1;
+		else if (mouse_buttons & 0b100)
+			mouse_buttons = 2;
+		else
+			mouse_buttons = 3;
+
+		PORT(DI_PORT) = mouse_buttons | (mouse_z << 4) | (0b00001000); // Bit 4 is 4th mouse button (not pressed)
 #else
 		PORT(DI_PORT) = (~mouse_buttons & 0b00000111) | (0b11111000); // Unused port bits set to 1 (mouse_z axis, 4th mouse button)
 #endif
