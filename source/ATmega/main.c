@@ -254,6 +254,9 @@ typedef enum
 	MDATA
 } mouse_pin_t;
 
+// PS/2 interface data and clock lines are both open collector.
+// Configuring port as input (DDRx register) switches it to high impendance mode,
+// writing high to PORTx register enables internal weak pull-up resistor.
 void gohi(mouse_pin_t pin)
 {
 	switch (pin)
@@ -269,6 +272,7 @@ void gohi(mouse_pin_t pin)
 	};
 }
 
+// Port configured as output and connected to ground.
 void golo(mouse_pin_t pin)
 {
 	switch (pin)
@@ -285,6 +289,7 @@ void golo(mouse_pin_t pin)
 	};
 }
 
+// Data sent from the host to the device is read on the rising edge of the clock signal.
 void mouse_write_bit(const uint8_t bit)
 {
 	if (bit)
@@ -300,6 +305,36 @@ void mouse_write_bit(const uint8_t bit)
 	while (CLK_READ == 1) {}
 }
 
+/*
+The PS/2 Mouse/Keyboard Protocol
+http://www.computer-engineering.org/ps2protocol/
+
+Host-to-Device Communication:
+
+PS/2 device always generates the clock signal. If the host wants to send data, it must first put the Clock
+and Data lines in a "Request-to-send" state as follows:
+
+* Inhibit communication by pulling Clock low for at least 100 microseconds.
+* Apply "Request-to-send" by pulling Data low, then release Clock.
+
+The device should check for this state at intervals not to exceed 10 milliseconds. When the device detects this state, it will begin generating Clock signals and clock in eight data bits and one stop bit. The host changes the Data line only when the Clock line is low, and data is read by the device when Clock is high.
+
+After the stop bit is received, the device will acknowledge the received byte by bringing the Data line low and generating one last clock pulse. 
+
+Steps the host must follow to send data to a PS/2 device:
+ 1) Bring the Clock line low for at least 100 microseconds.
+ 2) Bring the Data line low.
+ 3) Release the Clock line.
+ 4) Wait for the device to bring the Clock line low.
+ 5) Set/reset the Data line to send the first data bit
+ 6) Wait for the device to bring Clock high.
+ 7) Wait for the device to bring Clock low.
+ 8) Repeat steps 5-7 for the other seven data bits and the parity bit
+ 9) Release the Data line.
+ 10) Wait for the device to bring Data low.
+ 11) Wait for the device to bring Clock low.
+ 12) Wait for the device to release Data and Clock
+*/
 void mouse_write_byte(uint8_t data)
 {
 	uint8_t parity = 1;
@@ -343,6 +378,7 @@ void mouse_write_byte(uint8_t data)
 	golo(MCLK);
 }
 
+// Data sent from the device to the host is read on the falling edge of the clock signal.
 uint8_t mouse_read_bit(void)
 {
 	// The Data line changes state when Clock is high and that data is valid when Clock is low.
@@ -362,9 +398,11 @@ uint8_t mouse_read_byte(void)
 	uint8_t data = 0;
 	uint8_t parity = 1;
 
-	/* start the clock */
-	gohi(MCLK); // ?
-	gohi(MDATA); // ?
+	// Release clock and data lines.
+	gohi(MCLK);
+	gohi(MDATA);
+	// The clock line must be continuously high for at least 50 microseconds
+	// before the device can begin to transmit data.
 	_delay_us(50);
 
 	const uint8_t start_bit = mouse_read_bit(); // Start bit should be 0
@@ -407,8 +445,9 @@ void mouse_write_byte_read_ack(const uint8_t data)
 
 void mouse_init(void)
 {
-	gohi(MCLK); //?
-	gohi(MDATA); //?
+	// Release clock and data lines.
+	gohi(MCLK);
+	gohi(MDATA);
 
 	mouse_write_byte_read_ack(MOUSE_RESET);
 
