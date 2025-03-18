@@ -339,13 +339,9 @@ void mouse_write_byte(uint8_t data)
 {
 	uint8_t parity = 1;
 
-	/* put pins in output mode */
-	gohi(MDATA); // ?
-	gohi(MCLK); // ?
-	_delay_us(300);
-
-	golo(MCLK); // Inhibit communication with CLK = low.
-	_delay_us(300);
+	// Inhibit communication with CLK = low.
+	golo(MCLK);
+	_delay_us(100);
 
 	// start bit = 0
 	golo(MDATA);
