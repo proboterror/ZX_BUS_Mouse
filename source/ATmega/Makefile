@@ -187,7 +187,7 @@ AVRDUDE_PORT = usb    # programmer connected to serial device
 
 AVRDUDE_WRITE_FLASH = -U flash:w:$(TARGET).hex
 AVRDUDE_WRITE_EEPROM = -U eeprom:w:$(TARGET).eep
-AVRDUDE_WRITE_FUSES = -U lfuse:w:0xFF:m -U hfuse:w:0xdf:m
+AVRDUDE_WRITE_FUSES = -U lfuse:w:0xC4:m -U hfuse:w:0xD9:m
 #-U efuse:w:0xff:m
 AVRDUDE_WRITE_LOCKS = -U lock:w:0f:m
 
