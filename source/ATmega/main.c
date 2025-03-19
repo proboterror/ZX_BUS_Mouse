@@ -4,6 +4,9 @@
 	and set Kempston mouse controller registers via DI_PORT and MX_PIN, MY_PIN, MKEY_PIN strobes.
 	3 mouse buttons and 4 bit mouse wheel axis supported.
 
+	Interrupt processing based on avr-mouse-ps2-to-serial firmware source by Oleg Trifonov
+	https://github.com/trol73/avr-mouse-ps2-to-serial
+
 	Partially based on "Arduino/Wiring Library for interfacing with a PS2 mouse"
 	https://github.com/kristopher/PS2-Mouse-Arduino
 
@@ -23,6 +26,7 @@
 #include <stdbool.h>
 #include <stdint.h>
 
+#include <avr/interrupt.h>
 #include <avr/wdt.h>
 
 #include <util/delay.h>
@@ -198,7 +202,7 @@ enum mouse_resolution
 #define PIN(p) GLUE(PIN, p)
 
 // DDRx Register: 1 makes the corresponding pin an output, and a 0 makes the corresponding pin an input.
-#define input(PORT_, PIN_) DDR(PORT_) &= ~(1 << PIN_);
+#define input(PORT_, PIN_) DDR(PORT_) &= ~(1 << PIN_)
 #define output(PORT_, PIN_) DDR(PORT_) |= (1 << PIN_)
 
 /*
@@ -243,10 +247,22 @@ int8_t mouse_z = 0b00000000;
 typedef enum
 {
 	PS2_STATE_ERROR,
+	PS2_STATE_READ,
+	PS2_STATE_WRITE,
 	PS2_STATE_OK
 } ps2_state_t;
 
-ps2_state_t ps2_state = PS2_STATE_OK;
+#define PS2_BUF_SIZE 256 // PS/2 receive buffer size
+
+volatile ps2_state_t ps2_state = PS2_STATE_OK;
+volatile uint8_t ps2_bitcount; // send / receive data handler remaining bits counter
+volatile uint8_t ps2_data; // send / receive one byte buffer
+volatile uint8_t ps2_parity; // sending byte parity
+
+volatile uint8_t ps2_rx_buf[PS2_BUF_SIZE]; // PS/2 receive ring buffer
+volatile uint8_t ps2_rx_buf_w; // ring buffer write head
+volatile uint8_t ps2_rx_buf_r; // ring buffer read tail
+volatile uint8_t ps2_rx_buf_count; // bytes count in receive buffer
 
 typedef enum
 {
@@ -254,6 +270,9 @@ typedef enum
 	MDATA
 } mouse_pin_t;
 
+// PS/2 interface data and clock lines are both open collector.
+// Configuring port as input (DDRx register) switches it to high impendance mode,
+// writing high to PORTx register enables internal weak pull-up resistor.
 void gohi(mouse_pin_t pin)
 {
 	switch (pin)
@@ -269,6 +288,7 @@ void gohi(mouse_pin_t pin)
 	};
 }
 
+// Port configured as output and connected to ground.
 void golo(mouse_pin_t pin)
 {
 	switch (pin)
@@ -285,176 +305,333 @@ void golo(mouse_pin_t pin)
 	};
 }
 
-void mouse_write_bit(const uint8_t bit)
+// Enable INT0 external interrupt on clock change.
+void enable_int0(void)
 {
-	if (bit)
+	GIFR = _BV(INTF0);
+	GICR |= _BV(INT0);
+	MCUCR = (MCUCR & 0xFC) | 2; // The falling edge of INT0 generates an interrupt request.
+}
+
+// Disable INT0 external interrupt on clock change.
+void disable_int0(void)
+{
+	GIFR = _BV(INTF0);
+	GICR &= ~_BV(INT0);
+}
+
+// Store byte received from PS/2 mouse device in receive buffer.
+// Called only from interrupt handler.
+void ps2_rx_push(const uint8_t data)
+{
+	// Reboot / restart controller in case of receive buffer overflow.
+	if (ps2_rx_buf_count >= sizeof(ps2_rx_buf))
 	{
-		gohi(MDATA);
+		ps2_state = PS2_STATE_ERROR;
+		return;
+	}
+
+	// Store in receive buffer
+	ps2_rx_buf[ps2_rx_buf_w] = data;
+	ps2_rx_buf_count++;
+
+	if (++ps2_rx_buf_w == sizeof(ps2_rx_buf))
+		ps2_rx_buf_w = 0;
+}
+
+// Non-blocking get byte from receive buffer.
+// Returns 0 if buffer empty.
+uint8_t mouse_read_byte_async(void) // ps2_aread
+{
+	uint8_t data;
+
+	// Return 0 if buffer empty.
+	if (ps2_rx_buf_count == 0)
+	{
+		data = 0;
 	}
 	else
 	{
-		golo(MDATA);
+		disable_int0(); // Disable clock change interrupt because of receive buffer change.
+
+		// Read byte from receive buffer.
+		data = ps2_rx_buf[ps2_rx_buf_r];
+		ps2_rx_buf_count--;
+
+		if (++ps2_rx_buf_r == sizeof(ps2_rx_buf))
+			ps2_rx_buf_r = 0;
+
+		enable_int0(); // Enable clock change interrupt.
 	}
-	/* wait for clock cycle */
-	while (CLK_READ == 0) {}
-	while (CLK_READ == 1) {}
-}
-
-void mouse_write_byte(uint8_t data)
-{
-	uint8_t parity = 1;
-
-	/* put pins in output mode */
-	gohi(MDATA); // ?
-	gohi(MCLK); // ?
-	_delay_us(300);
-
-	golo(MCLK); // Inhibit communication with CLK = low.
-	_delay_us(300);
-
-	// start bit = 0
-	golo(MDATA);
-	_delay_us(10);
-	gohi(MCLK);
-
-	/* wait for mouse to take control of clock); */
-	while (CLK_READ == 1) {}
-	/* clock is low, and we are clear to send data */
-
-	for (uint8_t i = 0; i < 8; i++)
-	{
-		mouse_write_bit(data & 0x01);
-
-		parity = parity ^ (data & 0x01);
-		data = data >> 1;
-	}
-
-	mouse_write_bit(parity);
-
-	// stop bit = 1
-	gohi(MDATA);
-	_delay_us(50);
-
-	while (CLK_READ == 1) {}
-	/* wait for mouse to switch modes */
-	while ((CLK_READ == 0) || (DATA_READ == 0)) {} // Device should confirm with ACK bit = 0.
-
-	// put a hold on the incoming data / inhibit the auxiliary device
-	golo(MCLK);
-}
-
-uint8_t mouse_read_bit(void)
-{
-	// The Data line changes state when Clock is high and that data is valid when Clock is low.
-	// Wait CLK down
-	while (CLK_READ == 1) {}
-
-	const uint8_t bit = DATA_READ;
-
-	// Wait CLK up
-	while (CLK_READ == 0) {}
-
-	return bit;
-}
-
-uint8_t mouse_read_byte(void)
-{
-	uint8_t data = 0;
-	uint8_t parity = 1;
-
-	/* start the clock */
-	gohi(MCLK); // ?
-	gohi(MDATA); // ?
-	_delay_us(50);
-
-	const uint8_t start_bit = mouse_read_bit(); // Start bit should be 0
-	if(start_bit == 1)
-		ps2_state = PS2_STATE_ERROR;
-
-	for (uint8_t i = 0; i < 8; i++)
-	{
-		data >>= 1;
-
-		const uint8_t bit = mouse_read_bit();
-		if(bit)
-			data |= 0x80;
-		parity = parity ^ (bit & 0x01);
-	}
-
-	const uint8_t parity_bit = mouse_read_bit(); // Parity bit (odd parity)
-	if (parity != (parity_bit != 0))
-		ps2_state = PS2_STATE_ERROR;
-
-	const uint8_t stop_bit = mouse_read_bit(); // Stop bit should be 1
-	if(stop_bit == 0)
-		ps2_state = PS2_STATE_ERROR;
-
-	/* put a hold on the incoming data. */
-	golo(MCLK);
 
 	return data;
 }
 
-void mouse_write_byte_read_ack(const uint8_t data)
+uint8_t parity(uint8_t p)
 {
-	mouse_write_byte(data);
+	p = p ^ (p >> 4 | p << 4);
+	p = p ^ (p >> 2);
+	p = p ^ (p >> 1);
 
-	if (mouse_read_byte() != MOUSE_ACK)
-	{ 
-		ps2_state = PS2_STATE_ERROR; 
+	return (p ^ 1) & 1;
+}
+
+ISR (INT0_vect)
+{
+	if (ps2_state == PS2_STATE_ERROR)
+		return;
+
+	// Data sent from the host to the device is read on the rising edge of the clock signal.
+	if (ps2_state == PS2_STATE_WRITE)
+	{
+		switch (ps2_bitcount)
+		{
+			default: // Data byte
+				if (ps2_data & 1)
+					//gohi(MDATA);
+					input(PS2_DATA_PORT, PS2_DATA_PIN);
+				else
+					//golo(MDATA);
+					output(PS2_DATA_PORT, PS2_DATA_PIN);
+
+				ps2_data >>= 1;
+				break;
+			case 3: // Parity bit
+				if (ps2_parity)
+					//gohi(MDATA);
+					input(PS2_DATA_PORT, PS2_DATA_PIN);
+				else
+					//golo(MDATA);
+					output(PS2_DATA_PORT, PS2_DATA_PIN);
+
+				break;
+			case 2: // Stop bit
+				//gohi(MDATA); // Stop bit should be 1
+				input(PS2_DATA_PORT, PS2_DATA_PIN);
+				break;
+			case 1: // Receive acknowledge bit
+				if (DATA_READ)
+					ps2_state = PS2_STATE_ERROR;
+				else
+					ps2_state = PS2_STATE_READ; 
+
+				ps2_bitcount = 12;
+				break;
+		}
+	}
+	// Data sent from the device to the host is read on the falling edge of the clock signal.
+	else // PS2_STATE_READ
+	{
+		// The Data line changes state when Clock is high and that data is valid when Clock is low.
+		switch(ps2_bitcount)
+		{
+			case 11: // Start bit
+				if (DATA_READ) // Start bit should be 0
+					ps2_state = PS2_STATE_ERROR;
+
+				break;
+			default: // Data byte
+				ps2_data >>= 1;
+
+				if(DATA_READ)
+					ps2_data |= 0x80;
+
+				break;
+			case 2: // Parity bit
+				if (parity(ps2_data) != (DATA_READ != 0)) // Parity bit (odd parity)
+					ps2_state = PS2_STATE_ERROR;
+
+				break;
+			case 1: // Stop bit
+				if (DATA_READ) // Stop bit should be 1
+					ps2_rx_push(ps2_data);
+				else
+					 ps2_state = PS2_STATE_ERROR;
+
+				ps2_bitcount = 12;
+		}
+	}
+
+	ps2_bitcount--;
+}
+
+void ps2_init_port(void)
+{
+	// Switch PS/2 port to input.
+	input(PS2_CLK_PORT, PS2_CLK_PIN);
+	input(PS2_DATA_PORT, PS2_DATA_PIN);
+	// Release clock and data lines.
+	//gohi(MCLK);
+	//gohi(MDATA);
+
+	// Reset receive biffer.
+	ps2_rx_buf_w = 0;
+	ps2_rx_buf_r = 0;
+	ps2_rx_buf_count = 0;
+
+	// Set clock interrupt handler state.
+	ps2_state = PS2_STATE_READ;
+	ps2_bitcount = 11;
+
+	enable_int0();
+
+	sei(); // Enable global interrupts.
+}
+
+/*
+The PS/2 Mouse/Keyboard Protocol
+http://www.computer-engineering.org/ps2protocol/
+
+Host-to-Device Communication:
+
+PS/2 device always generates the clock signal. If the host wants to send data, it must first put the Clock
+and Data lines in a "Request-to-send" state as follows:
+
+* Inhibit communication by pulling Clock low for at least 100 microseconds.
+* Apply "Request-to-send" by pulling Data low, then release Clock.
+
+The device should check for this state at intervals not to exceed 10 milliseconds. When the device detects this state, it will begin generating Clock signals and clock in eight data bits and one stop bit. The host changes the Data line only when the Clock line is low, and data is read by the device when Clock is high.
+
+After the stop bit is received, the device will acknowledge the received byte by bringing the Data line low and generating one last clock pulse. 
+
+Steps the host must follow to send data to a PS/2 device:
+ 1) Bring the Clock line low for at least 100 microseconds.
+ 2) Bring the Data line low.
+ 3) Release the Clock line.
+ 4) Wait for the device to bring the Clock line low.
+ 5) Set/reset the Data line to send the first data bit
+ 6) Wait for the device to bring Clock high.
+ 7) Wait for the device to bring Clock low.
+ 8) Repeat steps 5-7 for the other seven data bits and the parity bit
+ 9) Release the Data line.
+ 10) Wait for the device to bring Data low.
+ 11) Wait for the device to bring Clock low.
+ 12) Wait for the device to release Data and Clock
+*/
+
+// Non-blocking send byte to PS/2 device without acknowledge.
+void mouse_write_byte_async(uint8_t data) // ps2_write
+{
+	disable_int0();
+
+	// Inhibit host to device communication by bringing clock low for 100 us.
+	golo(MCLK);
+	_delay_us(100);
+
+	golo(MDATA); // This is start bit = 0
+
+	_delay_us(10); // Required rise time for data line.
+
+	// Release clock line.
+	// Data sent from the host to the device is read on the rising edge of the clock signal.
+	input(PS2_CLK_PORT, PS2_CLK_PIN);
+	//gohi(MCLK);
+
+	// Reset receive buffer.
+	ps2_rx_buf_count = 0;
+	ps2_rx_buf_w = 0;
+	ps2_rx_buf_r = 0;
+
+	// Set interrupt handler state to send.
+	ps2_state = PS2_STATE_WRITE;
+	ps2_bitcount = 11;
+	ps2_data = data;
+	ps2_parity = parity(data);
+
+	enable_int0();
+}
+
+// Blocking read byte from PS/2 port.
+uint8_t mouse_read_byte_sync(void) // ps2_recv
+{
+	while (ps2_rx_buf_count == 0);
+
+	return mouse_read_byte_async();
+}
+
+// Blocking send byte to PS/2 port with acknowledge.
+void mouse_write_byte_read_ack_sync(const uint8_t data) // ps2_send
+{
+	mouse_write_byte_async(data);
+
+	if (mouse_read_byte_sync() != MOUSE_ACK)
+	{
+		ps2_state = PS2_STATE_ERROR;
 	}
 }
 
-void mouse_init(void)
+void mouse_init_protocol(void)
 {
-	gohi(MCLK); //?
-	gohi(MDATA); //?
+	mouse_write_byte_read_ack_sync(MOUSE_RESET);
 
-	mouse_write_byte_read_ack(MOUSE_RESET);
-
-	if (mouse_read_byte() != MOUSE_RESET_OK)
-	{ 
+	if (mouse_read_byte_sync() != MOUSE_RESET_OK)
+	{
 		ps2_state = PS2_STATE_ERROR;
 	}
 
-	if (mouse_read_byte() != DEFAULT_MOUSE_DEVICE_ID)
-	{ 
+	if (mouse_read_byte_sync() != DEFAULT_MOUSE_DEVICE_ID)
+	{
 		ps2_state = PS2_STATE_ERROR; 
 	}
 
 #if ENABLE_WHEEL
 	// Microsoft Intellimouse scrolling wheel enable sequence. Sample rate set to 80 as side effect.
-	mouse_write_byte_read_ack(MOUSE_SET_SAMPLE_RATE);
-	mouse_write_byte_read_ack(200);
-	mouse_write_byte_read_ack(MOUSE_SET_SAMPLE_RATE);
-	mouse_write_byte_read_ack(100);
-	mouse_write_byte_read_ack(MOUSE_SET_SAMPLE_RATE);
-	mouse_write_byte_read_ack(80);
+	mouse_write_byte_read_ack_sync(MOUSE_SET_SAMPLE_RATE);
+	mouse_write_byte_read_ack_sync(200);
+	mouse_write_byte_read_ack_sync(MOUSE_SET_SAMPLE_RATE);
+	mouse_write_byte_read_ack_sync(100);
+	mouse_write_byte_read_ack_sync(MOUSE_SET_SAMPLE_RATE);
+	mouse_write_byte_read_ack_sync(80);
 
 	// Check if connected device is Microsoft Intellimouse compatible.
-	mouse_write_byte_read_ack(MOUSE_GET_DEVICE_ID);
+	mouse_write_byte_read_ack_sync(MOUSE_GET_DEVICE_ID);
 	// Standard PS/2 mouse will respond with device ID = 00h.
 	// Microsoft Intellimouse will respond with an ID of 03h.
-	mouse_wheel_enabled = (mouse_read_byte() == INTELLIMOUSE_DEVICE_ID);
+	mouse_wheel_enabled = (mouse_read_byte_sync() == INTELLIMOUSE_DEVICE_ID);
 
 	// If mouse wheel not presented then bits 7-4 on buttons port returns 1111.
 	if(!mouse_wheel_enabled)
 		mouse_z = 0b00001111;
 #endif
 	// Set mouse resolution.
-	mouse_write_byte_read_ack(MOUSE_SET_RESOLUTION);
-	mouse_write_byte_read_ack(RESOLUTION_8_COUNTS_PER_MM);
+	mouse_write_byte_read_ack_sync(MOUSE_SET_RESOLUTION);
+	mouse_write_byte_read_ack_sync(RESOLUTION_8_COUNTS_PER_MM);
 
 	// Set mouse reports count per second.
-	mouse_write_byte_read_ack(MOUSE_SET_SAMPLE_RATE);
-	mouse_write_byte_read_ack(PS2_SAMPLES_PER_SEC);
+	mouse_write_byte_read_ack_sync(MOUSE_SET_SAMPLE_RATE);
+	mouse_write_byte_read_ack_sync(PS2_SAMPLES_PER_SEC);
 
-	mouse_write_byte_read_ack(MOUSE_SET_SCALE_11);
+	mouse_write_byte_read_ack_sync(MOUSE_SET_SCALE_11);
 
 	// Enable mouse data streaming.
-	mouse_write_byte_read_ack(MOUSE_ENABLE_DATA_REPORT);
+	mouse_write_byte_read_ack_sync(MOUSE_ENABLE_DATA_REPORT);
+}
 
-	_delay_us(100); //?
+// Process received mouse state packet: x, y axis delta and buttons / wheel axis.
+// Returns false if no data received.
+bool mouse_read_state_async(void)
+{
+	uint8_t bytes_expected = 3;
+#if ENABLE_WHEEL
+	if (mouse_wheel_enabled)
+		bytes_expected++;
+#endif
+	if(ps2_rx_buf_count >= bytes_expected)
+	{
+		mouse_buttons = mouse_read_byte_async() & 7;
+		mouse_x += (int8_t)mouse_read_byte_async();
+		mouse_y += (int8_t)mouse_read_byte_async();
+#if ENABLE_WHEEL
+		if (mouse_wheel_enabled)
+		{
+			mouse_z -= (int8_t)mouse_read_byte_async(); // Axis direction matched Unreal Speccy 0.39.0 behaviour.
+			mouse_z &= 0b00001111;
+		}
+#endif
+		return true;
+	}
+
+	return false;
 }
 
 int main(void)
@@ -503,7 +680,9 @@ int main(void)
 	// Logitech M-SBF96 (P/N 852209-A000): requires 1s delay after power on before init.
 	wdt_enable(WDTO_2S);
 
-	mouse_init();
+	ps2_init_port();
+
+	mouse_init_protocol();
 
 	wdt_disable();
 
@@ -527,59 +706,50 @@ int main(void)
 
 	while (1)
 	{
-		mouse_buttons = mouse_read_byte();
-		int8_t dx = (int8_t)mouse_read_byte();
-		int8_t dy = (int8_t)mouse_read_byte();
-		mouse_x += dx;
-		mouse_y += dy;
-#if ENABLE_WHEEL
-		if (mouse_wheel_enabled)
+		if(mouse_read_state_async())
 		{
-			mouse_z -= (int8_t)mouse_read_byte(); // Axis direction matched Unreal Speccy 0.39.0 behaviour.
-			mouse_z &= 0b00001111;
-		}
-#endif
-		// Set MX, MY, MKEY values to controller registers.
-		// Data written to registers on rising_edge.
-		PORT(DI_PORT) = mouse_x;
-		_delay_us(DI_BUS_SET_DELAY);
-		high(MX_PORT, MX_PIN);
-		_delay_us(REGISTER_SET_DELAY);
-		low(MX_PORT, MX_PIN);
+			// Set MX, MY, MKEY values to controller registers.
+			// Data written to registers on rising_edge.
+			PORT(DI_PORT) = mouse_x;
+			_delay_us(DI_BUS_SET_DELAY);
+			high(MX_PORT, MX_PIN);
+			_delay_us(REGISTER_SET_DELAY);
+			low(MX_PORT, MX_PIN);
 
-		PORT(DI_PORT) = mouse_y;
-		_delay_us(DI_BUS_SET_DELAY);
-		high(MY_PORT, MY_PIN);
-		_delay_us(REGISTER_SET_DELAY);
-		low(MY_PORT, MY_PIN);
+			PORT(DI_PORT) = mouse_y;
+			_delay_us(DI_BUS_SET_DELAY);
+			high(MY_PORT, MY_PIN);
+			_delay_us(REGISTER_SET_DELAY);
+			low(MY_PORT, MY_PIN);
 
 #if ENABLE_WHEEL
-		PORT(DI_PORT) = (~mouse_buttons & 0b00000111) | (mouse_z << 4) | (0b00001000); // Bit 4 is 4th mouse button (not pressed)
+			PORT(DI_PORT) = (~mouse_buttons & 0b00000111) | (mouse_z << 4) | (0b00001000); // Bit 4 is 4th mouse button (not pressed)
 #else
-		PORT(DI_PORT) = (~mouse_buttons & 0b00000111) | (0b11111000); // Unused port bits set to 1 (mouse_z axis, 4th mouse button)
+			PORT(DI_PORT) = (~mouse_buttons & 0b00000111) | (0b11111000); // Unused port bits set to 1 (mouse_z axis, 4th mouse button)
 #endif
-		_delay_us(DI_BUS_SET_DELAY);
-		high(MKEY_PORT, MKEY_PIN);
-		_delay_us(REGISTER_SET_DELAY);
-		low(MKEY_PORT, MKEY_PIN);
+			_delay_us(DI_BUS_SET_DELAY);
+			high(MKEY_PORT, MKEY_PIN);
+			_delay_us(REGISTER_SET_DELAY);
+			low(MKEY_PORT, MKEY_PIN);
 
 #if DEBUG
-		char buf[5];
-		lcd_gotoxy(0, 0);
-		itoa(mouse_x, buf, 10);
-		lcd_puts(buf);
-		lcd_puts(" ");
-		itoa(mouse_y, buf, 10);
-		lcd_puts(buf);
-		lcd_puts(" ");
+			char buf[5];
+			lcd_gotoxy(0, 0);
+			itoa(mouse_x, buf, 10);
+			lcd_puts(buf);
+			lcd_puts(" ");
+			itoa(mouse_y, buf, 10);
+			lcd_puts(buf);
+			lcd_puts(" ");
 #if ENABLE_WHEEL
-		itoa(mouse_z, buf, 10);
-		lcd_puts(buf);
-		lcd_puts(" ");
+			itoa(mouse_z, buf, 10);
+			lcd_puts(buf);
+			lcd_puts(" ");
 #endif
-		itoa((mouse_buttons & 0b00000111), buf, 10);
-		lcd_puts(buf);
+			itoa((mouse_buttons & 0b00000111), buf, 10);
+			lcd_puts(buf);
 #endif // DEBUG
+		}
 
 		if (ps2_state == PS2_STATE_ERROR)
 		{
