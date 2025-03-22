@@ -27,7 +27,6 @@
 #include <stdint.h>
 
 #include <avr/interrupt.h>
-#include <avr/wdt.h>
 
 #include <util/delay.h>
 
@@ -457,6 +456,8 @@ ISR (INT0_vect)
 
 void ps2_init_port(void)
 {
+	disable_int0();
+
 	// Switch PS/2 port to input.
 	input(PS2_CLK_PORT, PS2_CLK_PIN);
 	input(PS2_DATA_PORT, PS2_DATA_PIN);
@@ -549,62 +550,173 @@ uint8_t mouse_read_byte_sync(void) // ps2_recv
 	return mouse_read_byte_async();
 }
 
-// Blocking send byte to PS/2 port with acknowledge.
-void mouse_write_byte_read_ack_sync(const uint8_t data) // ps2_send
-{
-	mouse_write_byte_async(data);
+uint8_t mouse_init_state = 0; // ToDo: reset on init restart
 
-	if (mouse_read_byte_sync() != MOUSE_ACK)
+// Returns true in byte read from device and matches passed value. 
+// Increases mouse_init_state if value matches else set ps2_state to PS2_STATE_ERROR.
+bool mouse_read_compare_value_async(uint8_t value)
+{
+	if(ps2_rx_buf_count)
 	{
-		ps2_state = PS2_STATE_ERROR;
+		if (mouse_read_byte_sync() != value)
+		{
+			ps2_state = PS2_STATE_ERROR;
+
+			return false;
+		}
+
+		mouse_init_state++; // Intended to be called from mouse_init_protocol.
+
+		return true;
 	}
+
+	return false;
 }
 
-void mouse_init_protocol(void)
+// Async mouse init with state machine.
+// Execution time not exceed 110 us (send inhibit + set start bit) time.
+// Returns true if init sequence succesfully completed.
+bool mouse_init_protocol(void)
 {
-	mouse_write_byte_read_ack_sync(MOUSE_RESET);
-
-	if (mouse_read_byte_sync() != MOUSE_RESET_OK)
+	switch (mouse_init_state)
 	{
-		ps2_state = PS2_STATE_ERROR;
-	}
-
-	if (mouse_read_byte_sync() != DEFAULT_MOUSE_DEVICE_ID)
-	{
-		ps2_state = PS2_STATE_ERROR; 
-	}
+	case 0:
+		mouse_write_byte_async(MOUSE_RESET);
+		mouse_init_state++;
+	case 1:
+		if(!mouse_read_compare_value_async(MOUSE_ACK))
+			return false;
+	case 2:
+		if(!mouse_read_compare_value_async(MOUSE_RESET_OK))
+			return false;
+	case 3:
+		if(!mouse_read_compare_value_async(DEFAULT_MOUSE_DEVICE_ID))
+		{
+			return false;
+		}
+		else
+		{
+#if !ENABLE_WHEEL
+			mouse_init_state = 19;
+#endif
+		}
 
 #if ENABLE_WHEEL
-	// Microsoft Intellimouse scrolling wheel enable sequence. Sample rate set to 80 as side effect.
-	mouse_write_byte_read_ack_sync(MOUSE_SET_SAMPLE_RATE);
-	mouse_write_byte_read_ack_sync(200);
-	mouse_write_byte_read_ack_sync(MOUSE_SET_SAMPLE_RATE);
-	mouse_write_byte_read_ack_sync(100);
-	mouse_write_byte_read_ack_sync(MOUSE_SET_SAMPLE_RATE);
-	mouse_write_byte_read_ack_sync(80);
+	// Microsoft Intellimouse scrolling wheel enable sequence: set sample rate 200, 100, 80.
+	// Sample rate set to 80 as side effect.
+	case 4:
+		mouse_write_byte_async(MOUSE_SET_SAMPLE_RATE);
+		mouse_init_state++;
+	case 5:
+		if(!mouse_read_compare_value_async(MOUSE_ACK))
+			return false;
+	case 6:
+		mouse_write_byte_async(200);
+		mouse_init_state++;
+	case 7:
+		if(!mouse_read_compare_value_async(MOUSE_ACK))
+			return false;
+
+	case 8:
+		mouse_write_byte_async(MOUSE_SET_SAMPLE_RATE);
+		mouse_init_state++;
+	case 9:	
+		if(!mouse_read_compare_value_async(MOUSE_ACK))
+			return false;
+	case 10:
+		mouse_write_byte_async(100);
+		mouse_init_state++;
+	case 11:
+		if(!mouse_read_compare_value_async(MOUSE_ACK))
+			return false;
+
+	case 12:
+		mouse_write_byte_async(MOUSE_SET_SAMPLE_RATE);
+		mouse_init_state++;
+	case 13:
+		if(!mouse_read_compare_value_async(MOUSE_ACK))
+			return false;
+	case 14:
+		mouse_write_byte_async(80);
+		mouse_init_state++;
+	case 15:
+		if(!mouse_read_compare_value_async(MOUSE_ACK))
+			return false;
 
 	// Check if connected device is Microsoft Intellimouse compatible.
-	mouse_write_byte_read_ack_sync(MOUSE_GET_DEVICE_ID);
-	// Standard PS/2 mouse will respond with device ID = 00h.
-	// Microsoft Intellimouse will respond with an ID of 03h.
-	mouse_wheel_enabled = (mouse_read_byte_sync() == INTELLIMOUSE_DEVICE_ID);
+	case 16:
+		mouse_write_byte_async(MOUSE_GET_DEVICE_ID);
+		mouse_init_state++;
+	case 17:
+		if(!mouse_read_compare_value_async(MOUSE_ACK))
+			return false;
+	case 18:
+		if(ps2_rx_buf_count)
+		{
+			// Standard PS/2 mouse will respond with device ID = 00h.
+			// Microsoft Intellimouse will respond with an ID of 03h.
+			if (mouse_read_byte_sync() == INTELLIMOUSE_DEVICE_ID)
+			{
+				mouse_wheel_enabled = true;
+			}
+			else
+			{
+				// If mouse wheel not presented then bits 7-4 on buttons port returns 1111.
+				if(!mouse_wheel_enabled)
+					mouse_z = 0b00001111;
+			}
 
-	// If mouse wheel not presented then bits 7-4 on buttons port returns 1111.
-	if(!mouse_wheel_enabled)
-		mouse_z = 0b00001111;
-#endif
+			mouse_init_state++;
+		}
+		else
+			return false;
+#endif // ENABLE_WHEEL
+
 	// Set mouse resolution.
-	mouse_write_byte_read_ack_sync(MOUSE_SET_RESOLUTION);
-	mouse_write_byte_read_ack_sync(RESOLUTION_8_COUNTS_PER_MM);
+	case 19:
+		mouse_write_byte_async(MOUSE_SET_RESOLUTION);
+		mouse_init_state++;
+	case 20:
+		if(!mouse_read_compare_value_async(MOUSE_ACK))
+			return false;
+	case 21:
+		mouse_write_byte_async(RESOLUTION_8_COUNTS_PER_MM);
+		mouse_init_state++;
+	case 22:
+		if(!mouse_read_compare_value_async(MOUSE_ACK))
+			return false;
 
 	// Set mouse reports count per second.
-	mouse_write_byte_read_ack_sync(MOUSE_SET_SAMPLE_RATE);
-	mouse_write_byte_read_ack_sync(PS2_SAMPLES_PER_SEC);
+	case 23:
+		mouse_write_byte_async(MOUSE_SET_SAMPLE_RATE);
+		mouse_init_state++;
+	case 24:
+		if(!mouse_read_compare_value_async(MOUSE_ACK))
+			return false;
+	case 25:
+		mouse_write_byte_async(PS2_SAMPLES_PER_SEC);
+		mouse_init_state++;
+	case 26:
+		if(!mouse_read_compare_value_async(MOUSE_ACK))
+			return false;
 
-	mouse_write_byte_read_ack_sync(MOUSE_SET_SCALE_11);
+	case 27:
+		mouse_write_byte_async(MOUSE_SET_SCALE_11);
+		mouse_init_state++;
+	case 28:
+		if(!mouse_read_compare_value_async(MOUSE_ACK))
+			return false;
 
 	// Enable mouse data streaming.
-	mouse_write_byte_read_ack_sync(MOUSE_ENABLE_DATA_REPORT);
+	case 29:
+		mouse_write_byte_async(MOUSE_ENABLE_DATA_REPORT);
+		mouse_init_state++;
+	case 30:
+		if(!mouse_read_compare_value_async(MOUSE_ACK))
+			return false;
+	}
+
+	return true;
 }
 
 // Process received mouse state packet: x, y axis delta and buttons / wheel axis.
@@ -673,87 +785,115 @@ int main(void)
 	lcd_init(LCD_DISP_ON); // init lcd and turn on
 
 	lcd_gotoxy(0, 2);
-	lcd_puts("Init...");
-#endif
-	// Reboot controller in case of init lock.
-	// Microsoft Mouse Port Compatible Mouse 2.1A (FCC ID: C3KKS8, Part No 92841): takes more than 1s to init after power on.
-	// Logitech M-SBF96 (P/N 852209-A000): requires 1s delay after power on before init.
-	wdt_enable(WDTO_2S);
-
-	ps2_init_port();
-
-	mouse_init_protocol();
-
-	wdt_disable();
-
-#if DEBUG
-	lcd_puts("Done");
+	lcd_puts("Init");
 #endif
 
-#if DEBUG
-	lcd_gotoxy(0, 3);
-#if ENABLE_WHEEL
-	if (mouse_wheel_enabled)
-	{
-		lcd_puts("Intellimouse mode");
-	}
-	else
-#endif
-	{
-		lcd_puts("Standard mode");
-	}
-#endif // DEBUG
+	bool ps2_port_inited = false;
+	bool mouse_inited = false;
 
 	while (1)
 	{
-		if(mouse_read_state_async())
+		if(ps2_port_inited == false)
 		{
-			// Set MX, MY, MKEY values to controller registers.
-			// Data written to registers on rising_edge.
-			PORT(DI_PORT) = mouse_x;
-			_delay_us(DI_BUS_SET_DELAY);
-			high(MX_PORT, MX_PIN);
-			_delay_us(REGISTER_SET_DELAY);
-			low(MX_PORT, MX_PIN);
+			lcd_puts(".");
+			ps2_init_port(); 
+			ps2_port_inited = true;
 
-			PORT(DI_PORT) = mouse_y;
-			_delay_us(DI_BUS_SET_DELAY);
-			high(MY_PORT, MY_PIN);
-			_delay_us(REGISTER_SET_DELAY);
-			low(MY_PORT, MY_PIN);
+			// Start mouse protocol init timeout timer.
+			TCNT1 = 0; // Initial timer value.
+			TCCR1B = 0b00000101; // Set timer 1 clock prescaler to F_CPU/1024.
+		}
+
+		if(mouse_inited == false)
+		{
+			mouse_inited = mouse_init_protocol();
+
+			if(mouse_inited)
+			{
+			#if DEBUG
+				lcd_puts("Done");
+
+				lcd_gotoxy(0, 3);
+			#if ENABLE_WHEEL
+				if (mouse_wheel_enabled)
+				{
+					lcd_puts("Intellimouse mode");
+				}
+				else
+			#endif
+				{
+					lcd_puts("Standard mode");
+				}
+			#endif // DEBUG
+			}
+			else
+			{
+				// Reboot controller in case of init lock.
+				// Microsoft Mouse Port Compatible Mouse 2.1A (FCC ID: C3KKS8, Part No 92841): takes more than 1s to init after power on.
+				// Logitech M-SBF96 (P/N 852209-A000): requires 1s delay after power on before init.
+
+				// if mouse protocol init timeout timer elapsed, restart init
+				if(TCNT1 > (F_CPU >> 10 << 1)) // timer set to 2s
+				{
+					ps2_state = PS2_STATE_ERROR;
+				}
+			}
+		}
+		else
+		{
+			if(mouse_read_state_async())
+			{
+				// Set MX, MY, MKEY values to controller registers.
+				// Data written to registers on rising_edge.
+				PORT(DI_PORT) = mouse_x;
+				_delay_us(DI_BUS_SET_DELAY);
+				high(MX_PORT, MX_PIN);
+				_delay_us(REGISTER_SET_DELAY);
+				low(MX_PORT, MX_PIN);
+
+				PORT(DI_PORT) = mouse_y;
+				_delay_us(DI_BUS_SET_DELAY);
+				high(MY_PORT, MY_PIN);
+				_delay_us(REGISTER_SET_DELAY);
+				low(MY_PORT, MY_PIN);
 
 #if ENABLE_WHEEL
-			PORT(DI_PORT) = (~mouse_buttons & 0b00000111) | (mouse_z << 4) | (0b00001000); // Bit 4 is 4th mouse button (not pressed)
+				PORT(DI_PORT) = (~mouse_buttons & 0b00000111) | (mouse_z << 4) | (0b00001000); // Bit 4 is 4th mouse button (not pressed)
 #else
-			PORT(DI_PORT) = (~mouse_buttons & 0b00000111) | (0b11111000); // Unused port bits set to 1 (mouse_z axis, 4th mouse button)
+				PORT(DI_PORT) = (~mouse_buttons & 0b00000111) | (0b11111000); // Unused port bits set to 1 (mouse_z axis, 4th mouse button)
 #endif
-			_delay_us(DI_BUS_SET_DELAY);
-			high(MKEY_PORT, MKEY_PIN);
-			_delay_us(REGISTER_SET_DELAY);
-			low(MKEY_PORT, MKEY_PIN);
+				_delay_us(DI_BUS_SET_DELAY);
+				high(MKEY_PORT, MKEY_PIN);
+				_delay_us(REGISTER_SET_DELAY);
+				low(MKEY_PORT, MKEY_PIN);
 
 #if DEBUG
-			char buf[5];
-			lcd_gotoxy(0, 0);
-			itoa(mouse_x, buf, 10);
-			lcd_puts(buf);
-			lcd_puts(" ");
-			itoa(mouse_y, buf, 10);
-			lcd_puts(buf);
-			lcd_puts(" ");
+				char buf[5];
+				lcd_gotoxy(0, 0);
+				itoa(mouse_x, buf, 10);
+				lcd_puts(buf);
+				lcd_puts(" ");
+				itoa(mouse_y, buf, 10);
+				lcd_puts(buf);
+				lcd_puts(" ");
 #if ENABLE_WHEEL
-			itoa(mouse_z, buf, 10);
-			lcd_puts(buf);
-			lcd_puts(" ");
+				itoa(mouse_z, buf, 10);
+				lcd_puts(buf);
+				lcd_puts(" ");
 #endif
-			itoa((mouse_buttons & 0b00000111), buf, 10);
-			lcd_puts(buf);
+				itoa((mouse_buttons & 0b00000111), buf, 10);
+				lcd_puts(buf);
 #endif // DEBUG
+			}
 		}
 
 		if (ps2_state == PS2_STATE_ERROR)
 		{
-			wdt_enable(WDTO_1S); // Reboot controller in case of error.
+			// Reset PS/2 port and mouse protocol state in case of error.
+			ps2_port_inited = false;
+			mouse_inited = false;
+
+			mouse_init_state = 0;
 		}
 	};
 
