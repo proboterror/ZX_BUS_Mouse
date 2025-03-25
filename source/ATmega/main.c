@@ -252,7 +252,7 @@ typedef enum
 	PS2_STATE_OK
 } ps2_state_t;
 
-#define PS2_BUF_SIZE 256 // PS/2 receive buffer size
+#define PS2_BUF_SIZE 255 // PS/2 receive buffer size
 
 volatile ps2_state_t ps2_state = PS2_STATE_OK;
 volatile uint8_t ps2_bitcount; // send / receive data handler remaining bits counter
