@@ -89,3 +89,4 @@ set_location_assignment PIN_7 -to TDI
 set_location_assignment PIN_38 -to TDO
 set_location_assignment PIN_13 -to TMS
 set_location_assignment PIN_20 -to IORQGE
+set_location_assignment PIN_1 -to A15

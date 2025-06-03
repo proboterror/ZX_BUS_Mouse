@@ -37,6 +37,7 @@ module mouse_controller
 	input wire IORQ, // active low
 	input wire A8,
 	input wire A10,
+	input wire A15, // Scorpion ZS 256 service ROM fix
 
 	// IORQGE = 0 when address lower bits and M1 == 1 (address partial match) else = 1.
 	// Connected to 74LVC1G125 3-state buffer OE/ pin, TTL 5V output.
@@ -52,7 +53,7 @@ module mouse_controller
 	always @(posedge MY) register_y = DI;
 	always @(posedge MKEY) register_key = DI;
 
-	wire address_partial_match = ~(A0 & A1 & A7 & M1 & ~A5);
+	wire address_partial_match = ~(A0 & A1 & A7 & M1 & ~A5 & A15);
 	//assign IORQGE = address_partial_match ? 1'hZ : 1; // CPLD IORQGE pin directly connected to ZX-BUS IORQGE pin.
 	assign IORQGE = address_partial_match; // CPLD IORQGE pin connected to 3-state buffer OE/ pin.
 	wire enable = ~(address_partial_match | RD | IORQ);
