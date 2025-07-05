@@ -260,7 +260,9 @@ IC Socket PLCC-44 THT DIP
 
 ### ATmega8
 Нужно установить AVR SDK: WinAVR-20100110<br>
-Сompile:
+Также для GNU утилит может потребоваться установить [MSYS2](https://www.msys2.org/). Путь к msys64/usr/bin должен быть в PATH.<br>
+
+Compile:
 <pre>
 make clean
 make all
